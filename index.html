@@ -3,57 +3,95 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Portfolio Optimizer – Fase 1</title>
-  <!-- Tailwind CSS desde CDN -->
+  <title>Portfolio Optimizer – Fase 2</title>
+  <!-- CDNs -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Plotly (versión explícita) -->
   <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
-  <!-- PapaParse para parsear CSV -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
 </head>
-<body class="bg-gray-50 text-gray-800 flex items-center justify-center min-h-screen p-6">
-  <div class="max-w-2xl w-full text-center">
-    <h1 class="text-3xl font-semibold mb-4">Portfolio Optimizer – Fase 1</h1>
-    <p class="mb-2">Abre la consola del navegador (F12) para ver el ejemplo de fetch.</p>
-    <p class="text-sm text-gray-500">(Se cargará automáticamente AAPL 2023-01-01 → 2023-06-30)</p>
+<body class="bg-gray-50 text-gray-800 p-6">
+  <div class="max-w-2xl mx-auto">
+    <h1 class="text-3xl font-semibold mb-6 text-center">Portfolio Optimizer – Fase 2</h1>
+
+    <!-- Formulario -->
+    <div class="space-y-4 mb-8">
+      <div>
+        <label class="block font-medium mb-1">Símbolo (Ticker)</label>
+        <input id="ticker" type="text" placeholder="Ej: AAPL"
+               class="w-full border rounded px-3 py-2" />
+      </div>
+      <div class="flex gap-4">
+        <div class="flex-1">
+          <label class="block font-medium mb-1">Desde</label>
+          <input id="fromDate" type="date" value="2023-01-01"
+                 class="w-full border rounded px-3 py-2" />
+        </div>
+        <div class="flex-1">
+          <label class="block font-medium mb-1">Hasta</label>
+          <input id="toDate" type="date" value="2023-06-30"
+                 class="w-full border rounded px-3 py-2" />
+        </div>
+      </div>
+      <button id="showChartBtn"
+              class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
+        Mostrar gráfico
+      </button>
+    </div>
+
+    <!-- Contenedor de gráfico -->
+    <div id="chart" class="bg-white p-4 rounded shadow-md" style="height:400px;">
+      <!-- Plotly renderizará aquí -->
+    </div>
   </div>
 
   <script>
-    // 🔧 Verificación de carga del script
-    console.log('🔧 Script cargado correctamente');
+    console.log('🔧 Script v2 cargado');
 
-    // Convierte "YYYY-MM-DD" a UNIX timestamp (segundos)
     function toUnix(dateStr) {
       return Math.floor(new Date(dateStr).getTime() / 1000);
     }
 
-    // Trae datos históricos de Yahoo Finance vía proxy CORS (AllOrigins)
     async function fetchHistory(symbol, from, to) {
-      console.log(`📬 fetchHistory invocado con ${symbol} desde ${from} hasta ${to}`);
-      const start = toUnix(from),
-            end   = toUnix(to);
+      const start = toUnix(from), end = toUnix(to);
       const url = 'https://api.allorigins.win/raw?url=' +
         encodeURIComponent(
           `https://query1.finance.yahoo.com/v7/finance/download/${symbol}` +
           `?period1=${start}&period2=${end}&interval=1d&events=history`
         );
-      console.log('🌐 URL de descarga:', url);
       const resp = await fetch(url);
       if (!resp.ok) throw new Error(resp.statusText);
-      const csvText = await resp.text();
-      const { data } = Papa.parse(csvText, { header: true, dynamicTyping: true });
+      const text = await resp.text();
+      const { data } = Papa.parse(text, { header:true, dynamicTyping:true });
       return data;
     }
 
-    // Al cargar la página, probamos fetchHistory y volcamos en consola
-    window.addEventListener('DOMContentLoaded', async () => {
-      console.log('📈 Cargando historial de AAPL...');
+    document.getElementById('showChartBtn').addEventListener('click', async () => {
+      const symbol = document.getElementById('ticker').value.toUpperCase().trim();
+      const from   = document.getElementById('fromDate').value;
+      const to     = document.getElementById('toDate').value;
+      if (!symbol) return alert('Ingresa un ticker válido.');
+
       try {
-        const datos = await fetchHistory('AAPL', '2023-01-01', '2023-06-30');
-        console.log('✅ Datos recibidos:', datos);
+        console.log(`📈 Fetch de ${symbol}`);
+        const data = await fetchHistory(symbol, from, to);
+        console.log('✅ Datos:', data);
+
+        // Extraer fechas y cierres
+        const dates  = data.map(d => d.Date);
+        const closes = data.map(d => d.Close);
+
+        Plotly.newPlot('chart', [{
+          x: dates, y: closes,
+          mode: 'lines+markers',
+          name: symbol
+        }], {
+          title: `${symbol} (${from} → ${to})`,
+          xaxis: { title: 'Fecha' },
+          yaxis: { title: 'Precio Cierre (USD)' }
+        });
       } catch (err) {
-        console.error('❌ Error al traer datos:', err);
-        alert('Error al traer datos: ' + err.message);
+        console.error('❌', err);
+        alert('Error: ' + err.message);
       }
     });
   </script>
