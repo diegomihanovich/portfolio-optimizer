@@ -6,7 +6,7 @@
   <title>Portfolio Optimizer – Fase 1</title>
   <!-- Tailwind CSS desde CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Plotly (versión explícita para evitar warnings) -->
+  <!-- Plotly (versión explícita) -->
   <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
   <!-- PapaParse para parsear CSV -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
@@ -19,6 +19,9 @@
   </div>
 
   <script>
+    // 🔧 Verificación de carga del script
+    console.log('🔧 Script cargado correctamente');
+
     // Convierte "YYYY-MM-DD" a UNIX timestamp (segundos)
     function toUnix(dateStr) {
       return Math.floor(new Date(dateStr).getTime() / 1000);
@@ -26,6 +29,7 @@
 
     // Trae datos históricos de Yahoo Finance vía proxy CORS (AllOrigins)
     async function fetchHistory(symbol, from, to) {
+      console.log(`📬 fetchHistory invocado con ${symbol} desde ${from} hasta ${to}`);
       const start = toUnix(from),
             end   = toUnix(to);
       const url = 'https://api.allorigins.win/raw?url=' +
@@ -33,8 +37,25 @@
           `https://query1.finance.yahoo.com/v7/finance/download/${symbol}` +
           `?period1=${start}&period2=${end}&interval=1d&events=history`
         );
+      console.log('🌐 URL de descarga:', url);
       const resp = await fetch(url);
       if (!resp.ok) throw new Error(resp.statusText);
       const csvText = await resp.text();
       const { data } = Papa.parse(csvText, { header: true, dynamicTyping: true });
-      ret
+      return data;
+    }
+
+    // Al cargar la página, probamos fetchHistory y volcamos en consola
+    window.addEventListener('DOMContentLoaded', async () => {
+      console.log('📈 Cargando historial de AAPL...');
+      try {
+        const datos = await fetchHistory('AAPL', '2023-01-01', '2023-06-30');
+        console.log('✅ Datos recibidos:', datos);
+      } catch (err) {
+        console.error('❌ Error al traer datos:', err);
+        alert('Error al traer datos: ' + err.message);
+      }
+    });
+  </script>
+</body>
+</html>
