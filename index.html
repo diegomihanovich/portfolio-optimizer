@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Portfolio Optimizer – Fase 2</title>
   <!-- CDNs -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -45,64 +45,64 @@
   </div>
 
   <script>
-  console.log('🔧 Script v2.1 cargado');
+    console.log('🔧 Script v2.1 cargado');
 
-  function toUnix(dateStr) {
-    return Math.floor(new Date(dateStr).getTime() / 1000);
-  }
-
-  async function fetchHistory(symbol, from, to) {
-    const start = toUnix(from);
-    // Agrego 86400s (1 día) para que incluya el "to" en el CSV
-    const end   = toUnix(to) + 86400;
-    const url = 'https://api.allorigins.win/raw?url=' +
-      encodeURIComponent(
-        `https://query1.finance.yahoo.com/v7/finance/download/${symbol}` +
-        `?period1=${start}&period2=${end}&interval=1d&events=history`
-      );
-    console.log('🌐 URL de descarga:', url);
-
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error(resp.statusText);
-    const text = await resp.text();
-    const { data } = Papa.parse(text, { header: true, dynamicTyping: true });
-    return data;
-  }
-
-  document.getElementById('showChartBtn').addEventListener('click', async () => {
-    const symbol = document.getElementById('ticker').value.toUpperCase().trim();
-    const from   = document.getElementById('fromDate').value;
-    const to     = document.getElementById('toDate').value;
-    if (!symbol) return alert('Ingresa un ticker válido.');
-
-    try {
-      console.log(`📈 Fetch de ${symbol} (${from} → ${to})`);
-      const data = await fetchHistory(symbol, from, to);
-      console.log('✅ Datos crudos:', data);
-
-      if (!data || data.length === 0) {
-        return alert(`No se encontraron datos para ${symbol} entre ${from} y ${to}. Intenta un rango anterior.`);
-      }
-
-      // Extraer fechas y cierres
-      const dates  = data.map(d => d.Date);
-      const closes = data.map(d => d.Close);
-
-      Plotly.newPlot('chart', [{
-        x: dates,
-        y: closes,
-        mode: 'lines+markers',
-        name: symbol
-      }], {
-        title: `${symbol} (${from} → ${to})`,
-        xaxis: { title: 'Fecha' },
-        yaxis: { title: 'Precio Cierre (USD)' }
-      });
-    } catch (err) {
-      console.error('❌ Error en showChartBtn:', err);
-      alert('Error al generar gráfico: ' + err.message);
+    function toUnix(dateStr) {
+      return Math.floor(new Date(dateStr).getTime() / 1000);
     }
-  });
-</script>
+
+    async function fetchHistory(symbol, from, to) {
+      const start = toUnix(from);
+      // Añadir un día (86400s) para incluir el "to"
+      const end   = toUnix(to) + 86400;
+      // Usamos otro proxy CORS más estable (allorigins.dev)
+      const proxy = 'https://api.allorigins.dev/raw?url=';
+      const target = `https://query1.finance.yahoo.com/v7/finance/download/${symbol}` +
+                     `?period1=${start}&period2=${end}&interval=1d&events=history`;
+      const url = proxy + encodeURIComponent(target);
+
+      console.log('🌐 Fetching CSV from:', url);
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+
+      const csvText = await resp.text();
+      console.log('📄 Raw CSV:', csvText.slice(0,200) + '...');
+
+      const { data } = Papa.parse(csvText, { header: true, dynamicTyping: true });
+      return data;
+    }
+
+    document.getElementById('showChartBtn').addEventListener('click', async () => {
+      console.log('🔘 Botón clickeado');
+      const symbol = document.getElementById('ticker').value.toUpperCase().trim();
+      const from   = document.getElementById('fromDate').value;
+      const to     = document.getElementById('toDate').value;
+      if (!symbol) return alert('Ingresa un ticker válido.');
+
+      try {
+        console.log(`📈 Solicitando ${symbol} de ${from} a ${to}`);
+        const data = await fetchHistory(symbol, from, to);
+        console.log('✅ Datos recibidos:', data);
+
+        if (!data || data.length === 0) {
+          return alert(`No se encontraron datos para ${symbol} entre ${from} y ${to}.`);
+        }
+
+        // Extraer fechas y precios
+        const dates  = data.map(d => d.Date);
+        const closes = data.map(d => d.Close);
+
+        Plotly.newPlot('chart', [{ x: dates, y: closes, mode: 'lines+markers', name: symbol }], {
+          title: `${symbol} (${from} → ${to})`,
+          xaxis: { title: 'Fecha' },
+          yaxis: { title: 'Precio Cierre (USD)' }
+        });
+
+      } catch (err) {
+        console.error('❌ Error al dibujar:', err);
+        alert('Error al generar gráfico: ' + err.message);
+      }
+    });
+  </script>
 </body>
 </html>
