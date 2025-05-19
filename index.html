@@ -3,34 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Portfolio Optimizer – Fase 2</title>
-  <!-- CDNs -->
+  <title>Portfolio Optimizer – Fase 2 (Stooq)</title>
+
+  <!-- Tailwind, Plotly y PapaParse vía CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
 </head>
 <body class="bg-gray-50 text-gray-800 p-6">
   <div class="max-w-2xl mx-auto">
-    <h1 class="text-3xl font-semibold mb-6 text-center">Portfolio Optimizer – Fase 2</h1>
+    <h1 class="text-3xl font-semibold mb-6 text-center">
+      Portfolio Optimizer – Fase 2
+    </h1>
 
-    <!-- Formulario -->
+    <!-- Formulario simple -->
     <div class="space-y-4 mb-8">
       <div>
         <label class="block font-medium mb-1">Símbolo (Ticker)</label>
         <input id="ticker" type="text" placeholder="Ej: AAPL"
                class="w-full border rounded px-3 py-2" />
-      </div>
-      <div class="flex gap-4">
-        <div class="flex-1">
-          <label class="block font-medium mb-1">Desde</label>
-          <input id="fromDate" type="date" value="2023-01-01"
-                 class="w-full border rounded px-3 py-2" />
-        </div>
-        <div class="flex-1">
-          <label class="block font-medium mb-1">Hasta</label>
-          <input id="toDate" type="date" value="2023-06-30"
-                 class="w-full border rounded px-3 py-2" />
-        </div>
       </div>
       <button id="showChartBtn"
               class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
@@ -38,79 +29,64 @@
       </button>
     </div>
 
-    <!-- Contenedor de gráfico -->
+    <!-- Contenedor para el gráfico -->
     <div id="chart" class="bg-white p-4 rounded shadow-md" style="height:400px;">
-      <!-- Plotly renderizará aquí -->
+      <!-- Plotly dibuja aquí -->
     </div>
   </div>
 
   <script>
-    console.log('🔧 Script v2.1 cargado');
+    console.log("🔧 Script v2.3 cargado");
 
-    function toUnix(dateStr) {
-      return Math.floor(new Date(dateStr).getTime() / 1000);
+    /** Descarga histórico diario de Stooq y lo parsea con PapaParse */
+    async function fetchHistory(symbol) {
+      const stooqSymbol = symbol.toUpperCase() + ".US";      // AAPL -> AAPL.US
+      const url = "https://corsproxy.io/?" +
+                  encodeURIComponent(`https://stooq.com/q/d/l/?s=${stooqSymbol}&i=d`);
+      console.log("🌐 Descargando CSV:", url);
+
+      const res = await fetch(url);
+      if (!res.ok) { throw new Error(res.status + " " + res.statusText); }
+
+      const csv = await res.text();
+      console.log("🔍 CSV (primeros 120 chars):", csv.slice(0, 120));
+
+      const { data } = Papa.parse(csv, { header: true, dynamicTyping: true });
+      if (!data.length || !data[0].Date) {
+        throw new Error("Stooq devolvió un CSV vacío o no válido.");
+      }
+      return data.filter(d => d.Close);  // quita filas vacías
     }
 
-   async function fetchHistory(symbol, from, to) {
-  const start = Math.floor(new Date(from).getTime()/1000);
-  const end   = Math.floor(new Date(to).getTime()/1000) + 86400;
-  const base  = 
-    `https://query1.finance.yahoo.com/v7/finance/download/${symbol}` +
-    `?period1=${start}&period2=${end}&interval=1d&events=history`;
-
-  const proxies = [
-    "https://api.allorigins.win/raw?url=",
-    "https://thingproxy.freeboard.io/fetch/"
-  ];
-
-  for (let proxy of proxies) {
-    const url = proxy + encodeURIComponent(base);
-    console.log("🌐 probando proxy:", proxy);
-    try {
-      const r = await fetch(url);
-      if (!r.ok) throw new Error(r.status + " " + r.statusText);
-      const csv = await r.text();
-      console.log("🔍 CSV crudo (primeros 200 chars):", csv.slice(0,200));
-      const { data } = Papa.parse(csv, { header:true, dynamicTyping:true });
-      console.log("✅ Filas parseadas:", data.length);
-      return data;
-    } catch(e) {
-      console.warn(`⚠️ proxy ${proxy} falló:`, e.message);
-    }
-  }
-
-  throw new Error("Ningún proxy pudo bajar el CSV — prueba otro ticker o rango.");
-}
-
-    document.getElementById('showChartBtn').addEventListener('click', async () => {
-      console.log('🔘 Botón clickeado');
-      const symbol = document.getElementById('ticker').value.toUpperCase().trim();
-      const from   = document.getElementById('fromDate').value;
-      const to     = document.getElementById('toDate').value;
-      if (!symbol) return alert('Ingresa un ticker válido.');
+    /** Click handler */
+    document.getElementById("showChartBtn").addEventListener("click", async () => {
+      const symbol = document.getElementById("ticker").value.trim().toUpperCase();
+      if (!symbol) { return alert("Ingresa un ticker válido, ej. AAPL."); }
 
       try {
-        console.log(`📈 Solicitando ${symbol} de ${from} a ${to}`);
-        const data = await fetchHistory(symbol, from, to);
-        console.log('✅ Datos recibidos:', data);
+        console.log(`📈 Solicitando histórico de ${symbol}`);
+        const data = await fetchHistory(symbol);
+        console.log("✅ Filas parseadas:", data.length);
 
-        if (!data || data.length === 0) {
-          return alert(`No se encontraron datos para ${symbol} entre ${from} y ${to}.`);
-        }
-
-        // Extraer fechas y precios
+        // Prepara arrays para Plotly
         const dates  = data.map(d => d.Date);
         const closes = data.map(d => d.Close);
 
-        Plotly.newPlot('chart', [{ x: dates, y: closes, mode: 'lines+markers', name: symbol }], {
-          title: `${symbol} (${from} → ${to})`,
-          xaxis: { title: 'Fecha' },
-          yaxis: { title: 'Precio Cierre (USD)' }
+        Plotly.newPlot("chart", [{
+          x: dates,
+          y: closes,
+          mode: "lines",
+          line: { width: 2 },
+          name: symbol
+        }], {
+          title: `${symbol} – Histórico diario`,
+          xaxis: { title: "Fecha" },
+          yaxis: { title: "Precio cierre (USD)" }
         });
 
       } catch (err) {
-        console.error('❌ Error al dibujar:', err);
-        alert('Error al generar gráfico: ' + err.message);
+        console.error("❌ Error:", err);
+        alert("Error al generar gráfico: " + err.message);
       }
     });
   </script>
