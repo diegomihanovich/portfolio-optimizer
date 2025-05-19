@@ -148,31 +148,59 @@ function covariance(x, y, mx, my) {
 
 nextBtn.addEventListener('click', async () => {
   statusMsg.textContent = `Descargando ${assets.length} activos…`;
-  nextBtn.disabled = true;      // evita doble clic
+  nextBtn.disabled = true;
   addBtn.disabled  = true;
 
+  let datasets;                       // ① visible fuera del try
+
   try {
-    // descarga todos los CSV a la vez
-    const datasets = await Promise.all(
+    /* ---------- Descarga paralela ---------- */
+    datasets = await Promise.all(
       assets.map(tkr => fetchHistory(tkr)
         .then(rows => ({ tkr, rows }))
         .catch(err => ({ tkr, err })))
     );
 
-    // comprueba resultados y muestra un mini-resumen
-    console.table(datasets.map(d => ({
+    /* ---------- Resumen descargas ---------- */
+    const resumen = datasets.map(d => ({
       Ticker: d.tkr,
       Filas : d.err ? 'ERROR' : d.rows.length
-    })));
+    }));
+    console.table(resumen);
 
     const errores = datasets.filter(d => d.err);
-    if (errores.length) {
-      alert('Hubo errores con: ' + errores.map(e => e.tkr).join(', '));
-    } else {
-      alert('Descarga completa ✔️');
+    const vacios  = resumen.filter(r => r.Filas === 0);
+    if (errores.length) alert('Errores en: ' + errores.map(e => e.tkr).join(', '));
+    if (vacios.length)  alert('Sin datos en: ' + vacios.map(v => v.Ticker).join(', '));
+
+    /* ---------- Paso 3: rendimientos y Σ ---------- */
+    const priceData = datasets.filter(d => !d.err && d.rows.length);
+    if (priceData.length < 2) {
+      console.warn('Necesitas al menos 2 activos con datos para Σ');
+      return;
     }
 
-    statusMsg.textContent = 'Descarga terminada.';
+    const returns = priceData.map(d => toReturns(d.rows));
+    const minLen  = Math.min(...returns.map(r => r.length));
+    const aligned = returns.map(r => r.slice(-minLen));
+
+    const means = aligned.map(arr => mean(arr));
+
+    const n      = aligned.length;
+    const Sigma  = Array.from({ length:n }, () => Array(n).fill(0));
+    for (let i = 0; i < n; i++) {
+      for (let j = i; j < n; j++) {
+        const cov = covariance(aligned[i], aligned[j], means[i], means[j]);
+        Sigma[i][j] = Sigma[j][i] = cov;
+      }
+    }
+
+    console.log('Promedios diarios (μ):', means);
+    console.log('Matriz de covarianzas Σ:');
+    console.table(Sigma.map((row, i) => ({ Ticker: priceData[i].tkr, ...row })));
+
+    statusMsg.textContent = 'Descarga y cálculos completados ✔️';
+
   } catch (e) {
     console.error(e);
     statusMsg.textContent = 'Error general 😓';
@@ -180,48 +208,6 @@ nextBtn.addEventListener('click', async () => {
     nextBtn.disabled = false;
     addBtn.disabled  = assets.length >= MAX_ASSETS;
   }
-  // comprueba resultados y muestra un mini-resumen
-const resumen = datasets.map(d => ({
-  Ticker: d.tkr,
-  Filas : d.err ? 'ERROR' : d.rows.length
-}));
-console.table(resumen);
-  /* ---------- Paso 3 : rendimientos y Σ ---------- */
-const priceData = datasets.filter(d => !d.err && d.rows.length);
-if (priceData.length < 2) {
-  console.warn('Necesitas al menos 2 activos con datos para Σ');
-  return;
-}
-
-// 1. convierte cada activo a array de rendimientos
-const returns = priceData.map(d => toReturns(d.rows));
-const minLen  = Math.min(...returns.map(r => r.length));
-// recorta todos a la misma longitud (desde el final) para alinear fechas
-const aligned = returns.map(r => r.slice(-minLen));
-
-// 2. media de cada activo
-const means = aligned.map(arr => mean(arr));
-
-// 3. matriz de covarianzas
-const n = aligned.length;
-const Sigma = Array.from({length:n}, ()=>Array(n).fill(0));
-for (let i=0;i<n;i++){
-  for (let j=i;j<n;j++){
-    const cov = covariance(aligned[i], aligned[j], means[i], means[j]);
-    Sigma[i][j] = Sigma[j][i] = cov;
-  }
-}
-
-// 4. imprime resultados
-console.log('Promedios diarios (μ):', means);
-console.log('Matriz de covarianzas Σ:');
-console.table(Sigma.map((row,idx)=>({Ticker:priceData[idx].tkr, ...row})));
-
-// ✓ validación si alguna fila es 0
-const vacios = resumen.filter(r => r.Filas === 0);
-if (vacios.length) {
-  alert('Sin datos para: ' + vacios.map(v => v.Ticker).join(', '));
-}
 });
   </script>
 </body>
