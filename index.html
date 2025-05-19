@@ -40,6 +40,7 @@
               disabled>
         Continuar con descarga ▼
       </button>
+      <p id="statusMsg" class="text-sm text-blue-600 mt-2"></p>
     </div>
 
     <!-- Contenedor del gráfico (lo usaremos más adelante) -->
@@ -121,7 +122,43 @@
     return data.filter(d => d.Close);
   }
 
-  /* (En el Paso 2 añadiremos aquí el handler para nextBtn) */
+/* ---------- Paso 2 : descarga paralela ---------- */
+
+nextBtn.addEventListener('click', async () => {
+  statusMsg.textContent = `Descargando ${assets.length} activos…`;
+  nextBtn.disabled = true;      // evita doble clic
+  addBtn.disabled  = true;
+
+  try {
+    // descarga todos los CSV a la vez
+    const datasets = await Promise.all(
+      assets.map(tkr => fetchHistory(tkr)
+        .then(rows => ({ tkr, rows }))
+        .catch(err => ({ tkr, err })))
+    );
+
+    // comprueba resultados y muestra un mini-resumen
+    console.table(datasets.map(d => ({
+      Ticker: d.tkr,
+      Filas : d.err ? 'ERROR' : d.rows.length
+    })));
+
+    const errores = datasets.filter(d => d.err);
+    if (errores.length) {
+      alert('Hubo errores con: ' + errores.map(e => e.tkr).join(', '));
+    } else {
+      alert('Descarga completa ✔️');
+    }
+
+    statusMsg.textContent = 'Descarga terminada.';
+  } catch (e) {
+    console.error(e);
+    statusMsg.textContent = 'Error general 😓';
+  } finally {
+    nextBtn.disabled = false;
+    addBtn.disabled  = assets.length >= MAX_ASSETS;
+  }
+});
   </script>
 </body>
 </html>
