@@ -51,26 +51,36 @@
       return Math.floor(new Date(dateStr).getTime() / 1000);
     }
 
-    async function fetchHistory(symbol, from, to) {
-      const start = toUnix(from);
-      // Añadir un día (86400s) para incluir el "to"
-      const end   = toUnix(to) + 86400;
-      // Usamos otro proxy CORS más estable (allorigins.dev)
-      const proxy = 'https://api.allorigins.dev/raw?url=';
-      const target = `https://query1.finance.yahoo.com/v7/finance/download/${symbol}` +
-                     `?period1=${start}&period2=${end}&interval=1d&events=history`;
-      const url = proxy + encodeURIComponent(target);
+   async function fetchHistory(symbol, from, to) {
+  const start = Math.floor(new Date(from).getTime()/1000);
+  const end   = Math.floor(new Date(to).getTime()/1000) + 86400;
+  const base  = 
+    `https://query1.finance.yahoo.com/v7/finance/download/${symbol}` +
+    `?period1=${start}&period2=${end}&interval=1d&events=history`;
 
-      console.log('🌐 Fetching CSV from:', url);
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+  const proxies = [
+    "https://api.allorigins.win/raw?url=",
+    "https://thingproxy.freeboard.io/fetch/"
+  ];
 
-      const csvText = await resp.text();
-      console.log('📄 Raw CSV:', csvText.slice(0,200) + '...');
-
-      const { data } = Papa.parse(csvText, { header: true, dynamicTyping: true });
+  for (let proxy of proxies) {
+    const url = proxy + encodeURIComponent(base);
+    console.log("🌐 probando proxy:", proxy);
+    try {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(r.status + " " + r.statusText);
+      const csv = await r.text();
+      console.log("🔍 CSV crudo (primeros 200 chars):", csv.slice(0,200));
+      const { data } = Papa.parse(csv, { header:true, dynamicTyping:true });
+      console.log("✅ Filas parseadas:", data.length);
       return data;
+    } catch(e) {
+      console.warn(`⚠️ proxy ${proxy} falló:`, e.message);
     }
+  }
+
+  throw new Error("Ningún proxy pudo bajar el CSV — prueba otro ticker o rango.");
+}
 
     document.getElementById('showChartBtn').addEventListener('click', async () => {
       console.log('🔘 Botón clickeado');
