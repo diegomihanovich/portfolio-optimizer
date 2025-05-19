@@ -9,6 +9,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjs@11.11.2/lib/browser/math.js"></script>
 </head>
 <body class="bg-gray-50 text-gray-800 p-6">
   <div class="max-w-3xl mx-auto">
@@ -121,6 +122,27 @@
     const { data } = Papa.parse(csv, { header:true, dynamicTyping:true });
     return data.filter(d => d.Close);
   }
+/* --- helpers de estadística --- */
+function toReturns(priceRows) {
+  // usa Close y devuelve array de ln(P_t / P_{t-1})
+  const r = [];
+  for (let i = 1; i < priceRows.length; i++) {
+    const p0 = priceRows[i-1].Close;
+    const p1 = priceRows[i].Close;
+    if (p0 && p1) r.push(Math.log(p1/p0));
+  }
+  return r;
+}
+
+function mean(arr) {
+  return arr.reduce((s,v)=>s+v,0) / arr.length;
+}
+
+function covariance(x, y, mx, my) {
+  let sum = 0;
+  for (let i = 0; i < x.length; i++) sum += (x[i]-mx)*(y[i]-my);
+  return sum / (x.length - 1);
+}
 
 /* ---------- Paso 2 : descarga paralela ---------- */
 
@@ -158,6 +180,48 @@ nextBtn.addEventListener('click', async () => {
     nextBtn.disabled = false;
     addBtn.disabled  = assets.length >= MAX_ASSETS;
   }
+  // comprueba resultados y muestra un mini-resumen
+const resumen = datasets.map(d => ({
+  Ticker: d.tkr,
+  Filas : d.err ? 'ERROR' : d.rows.length
+}));
+console.table(resumen);
+  /* ---------- Paso 3 : rendimientos y Σ ---------- */
+const priceData = datasets.filter(d => !d.err && d.rows.length);
+if (priceData.length < 2) {
+  console.warn('Necesitas al menos 2 activos con datos para Σ');
+  return;
+}
+
+// 1. convierte cada activo a array de rendimientos
+const returns = priceData.map(d => toReturns(d.rows));
+const minLen  = Math.min(...returns.map(r => r.length));
+// recorta todos a la misma longitud (desde el final) para alinear fechas
+const aligned = returns.map(r => r.slice(-minLen));
+
+// 2. media de cada activo
+const means = aligned.map(arr => mean(arr));
+
+// 3. matriz de covarianzas
+const n = aligned.length;
+const Sigma = Array.from({length:n}, ()=>Array(n).fill(0));
+for (let i=0;i<n;i++){
+  for (let j=i;j<n;j++){
+    const cov = covariance(aligned[i], aligned[j], means[i], means[j]);
+    Sigma[i][j] = Sigma[j][i] = cov;
+  }
+}
+
+// 4. imprime resultados
+console.log('Promedios diarios (μ):', means);
+console.log('Matriz de covarianzas Σ:');
+console.table(Sigma.map((row,idx)=>({Ticker:priceData[idx].tkr, ...row})));
+
+// ✓ validación si alguna fila es 0
+const vacios = resumen.filter(r => r.Filas === 0);
+if (vacios.length) {
+  alert('Sin datos para: ' + vacios.map(v => v.Ticker).join(', '));
+}
 });
   </script>
 </body>
