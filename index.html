@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Portfolio Optimizer – Fase 2</title>
+  <title>Portfolio Optimizer – Fase 3 · Paso 1</title>
 
   <!-- CDNs -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -11,93 +11,117 @@
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
 </head>
 <body class="bg-gray-50 text-gray-800 p-6">
-  <div class="max-w-2xl mx-auto">
-    <h1 class="text-3xl font-semibold mb-6 text-center">Portfolio Optimizer – Fase 2</h1>
+  <div class="max-w-3xl mx-auto">
+    <h1 class="text-3xl font-semibold mb-6 text-center">
+      Portfolio Optimizer – Fase 3 · Paso 1
+    </h1>
 
-    <!-- Formulario -->
-    <div class="space-y-4 mb-8">
-      <div>
-        <label class="block font-medium mb-1">Símbolo (Ticker)</label>
-        <input id="ticker" type="text" placeholder="Ej: AAPL" class="w-full border rounded px-3 py-2" />
+    <!-- === Bloque Seleccionar activos === -->
+    <div class="space-y-4 mb-10">
+      <!-- Campo + botón Añadir -->
+      <div class="flex gap-2">
+        <input id="assetInput" type="text" placeholder="Ticker (ej: AAPL)"
+               class="flex-1 border rounded px-3 py-2" />
+        <button id="addAssetBtn"
+                class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+          Añadir
+        </button>
       </div>
 
-      <!-- Rangos opcionales -->
-      <div class="flex gap-4">
-        <div class="flex-1">
-          <label class="block font-medium mb-1">Desde (opcional)</label>
-          <input id="fromDate" type="date" class="w-full border rounded px-3 py-2" />
-        </div>
-        <div class="flex-1">
-          <label class="block font-medium mb-1">Hasta (opcional)</label>
-          <input id="toDate" type="date" class="w-full border rounded px-3 py-2" />
-        </div>
-      </div>
+      <!-- Lista dinámica -->
+      <ul id="assetList" class="space-y-2"></ul>
 
-      <button id="showChartBtn"
-              class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
-        Mostrar gráfico
+      <!-- Contador / aviso -->
+      <p id="assetCounter" class="text-sm text-gray-600"></p>
+
+      <!-- Botón continuar (descarga en el Paso 2) -->
+      <button id="nextBtn"
+              class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+              disabled>
+        Continuar con descarga ▼
       </button>
     </div>
 
-    <!-- Contenedor del gráfico -->
+    <!-- Contenedor del gráfico (lo usaremos más adelante) -->
     <div id="chart" class="bg-white p-4 rounded shadow-md" style="height:400px;"></div>
   </div>
 
+  <!-- =========  SCRIPTS  ========= -->
   <script>
-    console.log("🔧 Script v2.3 cargado");
+  console.log("🔧 Script F3-P1 cargado");
 
-    /* --- Descarga CSV de Stooq a través de corsproxy.io --- */
-    async function fetchHistory(symbol) {
-      const stooq = symbol.toUpperCase() + ".US";
-      const url   = "https://corsproxy.io/?" +
-                    encodeURIComponent(`https://stooq.com/q/d/l/?s=${stooq}&i=d`);
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(res.status + " " + res.statusText);
-      const csv = await res.text();
-      const { data } = Papa.parse(csv, { header:true, dynamicTyping:true });
-      return data.filter(d => d.Close);      // elimina líneas vacías
-    }
+  /* ---------- Gestión de lista ---------- */
+  const MAX_ASSETS = 20;
+  let assets = [];                               // tickers en mayúsculas
 
-    function inRange(row, from, to) {
-      if (from && row.Date < from) return false;
-      if (to   && row.Date > to)   return false;
-      return true;
-    }
+  const inp      = document.getElementById('assetInput');
+  const addBtn   = document.getElementById('addAssetBtn');
+  const listUl   = document.getElementById('assetList');
+  const counterP = document.getElementById('assetCounter');
+  const nextBtn  = document.getElementById('nextBtn');
 
-    document.getElementById("showChartBtn").addEventListener("click", async () => {
-      const symbol = document.getElementById("ticker").value.trim().toUpperCase();
-      if (!symbol) return alert("Ingresa un ticker (ej. AAPL)");
-
-      const from = document.getElementById("fromDate").value || null;
-      const to   = document.getElementById("toDate").value   || null;
-
-      try {
-        const rows = await fetchHistory(symbol);
-        const data = rows.filter(r => inRange(r, from, to));
-        if (!data.length) {
-          return alert(`No se encontraron datos para ${symbol} en el rango seleccionado.`);
-        }
-
-        const dates  = data.map(d => d.Date);
-        const closes = data.map(d => d.Close);
-
-        Plotly.newPlot("chart", [{
-          x: dates,
-          y: closes,
-          mode: "lines",
-          line: { width: 2 },
-          name: symbol
-        }], {
-          title: `${symbol} – Histórico diario`,
-          xaxis: { title: "Fecha" },
-          yaxis: { title: "Precio cierre (USD)" }
-        });
-
-      } catch (err) {
-        console.error(err);
-        alert("Error: " + err.message);
-      }
+  function refreshUI() {
+    // reconstruir lista
+    listUl.innerHTML = '';
+    assets.forEach(tkr => {
+      const li = document.createElement('li');
+      li.className = 'flex justify-between items-center bg-white border rounded px-3 py-2';
+      li.innerHTML = `
+        <span class="font-medium">${tkr}</span>
+        <button class="text-red-600 hover:text-red-800" data-tkr="${tkr}">✕</button>
+      `;
+      listUl.appendChild(li);
     });
+
+    // contador + botones
+    counterP.textContent = `${assets.length} / ${MAX_ASSETS} activos seleccionados`;
+    addBtn.disabled  = assets.length >= MAX_ASSETS;
+    nextBtn.disabled = assets.length === 0;
+  }
+
+  function addAsset() {
+    const tkr = inp.value.trim().toUpperCase();
+    inp.value = '';
+
+    if (!tkr) return;
+    if (assets.includes(tkr)) { alert('Ya está en la lista'); return; }
+    if (assets.length >= MAX_ASSETS) { alert('Máximo 20 activos'); return; }
+
+    assets.push(tkr);
+    refreshUI();
+  }
+
+  function removeAsset(tkr) {
+    assets = assets.filter(a => a !== tkr);
+    refreshUI();
+  }
+
+  /* Listeners */
+  addBtn.addEventListener('click', addAsset);
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') addAsset(); });
+  listUl.addEventListener('click', e => {
+    if (e.target.matches('button[data-tkr]')) {
+      removeAsset(e.target.dataset.tkr);
+    }
+  });
+
+  /* Inicia contador */
+  refreshUI();
+
+
+  /* === Código de descarga Stooq (igual al de Fase 2; aún no se usa aquí) === */
+  async function fetchHistory(symbol) {
+    const stooq = symbol.toUpperCase() + ".US";
+    const url   = "https://corsproxy.io/?" +
+                  encodeURIComponent(`https://stooq.com/q/d/l/?s=${stooq}&i=d`);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(res.status + " " + res.statusText);
+    const csv = await res.text();
+    const { data } = Papa.parse(csv, { header:true, dynamicTyping:true });
+    return data.filter(d => d.Close);
+  }
+
+  /* (En el Paso 2 añadiremos aquí el handler para nextBtn) */
   </script>
 </body>
 </html>
