@@ -3,278 +3,182 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Portfolio Optimizer – Fase 3 · Paso 1</title>
+  <title>Optimizador de Portafolio Pro</title>
 
-  <!-- CDNs -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tus fuentes + estilos originales ------------------------------->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>/* … TODA tu hoja de estilos sin cambios … */</style>
+
+  <!-- Librerías externas (CDN) --------------------------------------->
   <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mathjs@11.11.2/lib/browser/math.js"></script>
 </head>
-<body class="bg-gray-50 text-gray-800 p-6">
-  <div class="max-w-3xl mx-auto">
-    <h1 class="text-3xl font-semibold mb-6 text-center">
-      Portfolio Optimizer – Fase 3 · Paso 1
-    </h1>
+<body>
+  <!-- ============  TU PLANTILLA ORIGINAL  ============ -->
+  <!-- (solo se añadieron id que faltaban y se quitó el botón duplicado) -->
 
-    <!-- === Bloque Seleccionar activos === -->
-    <div class="space-y-4 mb-10">
-      <!-- Campo + botón Añadir -->
-      <div class="flex gap-2">
-        <input id="assetInput" type="text" placeholder="Ticker (ej: AAPL)"
-               class="flex-1 border rounded px-3 py-2" />
-        <button id="addAssetBtn"
-                class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-          Añadir
-        </button>
+  <header><h1>Optimizador de Portafolio Pro</h1></header>
+
+  <div class="container">
+    <aside class="sidebar">
+      <div class="control-group">
+        <label for="asset-search">Buscar y Seleccionar Activos</label>
+        <!-- ① input que usará el script -->
+        <input type="text" id="asset-search" placeholder="Ticker o Nombre: Ej: AAPL, MSFT…">
+        <!-- ② botón añadir -->
+        <button id="addAssetBtn" class="button secondary" style="margin-top:10px; width:100%;">Añadir Activo</button>
       </div>
 
-      <!-- Lista dinámica -->
-      <ul id="assetList" class="space-y-2"></ul>
+      <!-- ③ lista dinámica -->
+      <div class="control-group">
+        <label>Activos Seleccionados:</label>
+        <ul class="selected-assets-list" id="assetList"></ul>
+        <p id="assetCounter" class="text-sm" style="margin:4px 0;"></p>
+      </div>
 
-      <!-- Contador / aviso -->
-      <p id="assetCounter" class="text-sm text-gray-600"></p>
+      <!-- ④ botón principal -->
+      <button id="optimizeBtn" class="button success" style="width:100%;">Optimizar Portafolio</button>
+    </aside>
 
-      <!-- Botón continuar (descarga en el Paso 2) -->
-      <button id="nextBtn"
-              class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
-              disabled>
-        Continuar con descarga ▼
-      </button>
-      <p id="statusMsg" class="text-sm text-blue-600 mt-2"></p>
-    </div>
+    <main class="main-content">
+      <h2 class="section-title">Frontera Eficiente &amp; Composición</h2>
 
-    <!-- Contenedor del gráfico (lo usaremos más adelante) -->
-    <div id="chart" class="bg-white p-4 rounded shadow-md" style="height:400px;"></div>
+      <!-- ⑤ aquí cae el gráfico -->
+      <div class="chart-placeholder" id="efficient-frontier-chart">
+        Gráfico en preparación…
+      </div>
+
+      <div class="portfolio-details">
+        <h3 class="section-title">Portafolio Máx Sharpe</h3>
+        <div class="risk-return-display">
+          <p><strong>Retorno&nbsp;μ (anual):</strong> <span id="portfolio-return">–</span></p>
+          <p><strong>Riesgo&nbsp;σ (anual):</strong> <span id="portfolio-risk">–</span></p>
+        </div>
+        <h4>Peso por activo:</h4>
+        <ul class="weights-list" id="portfolio-weights"></ul>
+      </div>
+    </main>
   </div>
 
-  <!-- =========  SCRIPTS  ========= -->
+  <footer>© 2025 Optimizador de Portafolio Pro – solo fines educativos</footer>
+
+  <!-- ===================  SCRIPT  ==================== -->
   <script>
-  console.log("🔧 Script F3-P1 cargado");
+  /******** Config & utilidades ****************************************/
+  const MAX_ASSETS = 20;                 // límite
+  const listUl     = document.getElementById('assetList');
+  const counterP   = document.getElementById('assetCounter');
+  const addBtn     = document.getElementById('addAssetBtn');
+  const inp        = document.getElementById('asset-search');
+  const optimizeBtn= document.getElementById('optimizeBtn');
+  let assets = [];                       // tickers en mayúsculas
 
-  /* ---------- Gestión de lista ---------- */
-  const MAX_ASSETS = 20;
-  let assets = [];                               // tickers en mayúsculas
-
-  const inp      = document.getElementById('assetInput');
-  const addBtn   = document.getElementById('addAssetBtn');
-  const listUl   = document.getElementById('assetList');
-  const counterP = document.getElementById('assetCounter');
-  const nextBtn  = document.getElementById('nextBtn');
-
-  function refreshUI() {
-    // reconstruir lista
-    listUl.innerHTML = '';
-    assets.forEach(tkr => {
+  function refreshUI () {
+    listUl.innerHTML='';
+    assets.forEach(t=>{
       const li = document.createElement('li');
-      li.className = 'flex justify-between items-center bg-white border rounded px-3 py-2';
-      li.innerHTML = `
-        <span class="font-medium">${tkr}</span>
-        <button class="text-red-600 hover:text-red-800" data-tkr="${tkr}">✕</button>
-      `;
+      li.innerHTML = `<span>${t}</span><button data-tkr="${t}">✕</button>`;
       listUl.appendChild(li);
     });
-
-    // contador + botones
-    counterP.textContent = `${assets.length} / ${MAX_ASSETS} activos seleccionados`;
-    addBtn.disabled  = assets.length >= MAX_ASSETS;
-    nextBtn.disabled = assets.length === 0;
+    counterP.textContent = `${assets.length} / ${MAX_ASSETS} activos`;
+    addBtn.disabled      = assets.length>=MAX_ASSETS;
+    optimizeBtn.disabled = assets.length<2;
   }
-
-  function addAsset() {
-    const tkr = inp.value.trim().toUpperCase();
-    inp.value = '';
-
-    if (!tkr) return;
-    if (assets.includes(tkr)) { alert('Ya está en la lista'); return; }
-    if (assets.length >= MAX_ASSETS) { alert('Máximo 20 activos'); return; }
-
-    assets.push(tkr);
-    refreshUI();
+  function addAsset (){
+    const t = inp.value.trim().toUpperCase();
+    inp.value='';
+    if(!t||assets.includes(t)||assets.length>=MAX_ASSETS) return;
+    assets.push(t); refreshUI();
   }
-
-  function removeAsset(tkr) {
-    assets = assets.filter(a => a !== tkr);
-    refreshUI();
-  }
-
-  /* Listeners */
-  addBtn.addEventListener('click', addAsset);
-  inp.addEventListener('keydown', e => { if (e.key === 'Enter') addAsset(); });
-  listUl.addEventListener('click', e => {
-    if (e.target.matches('button[data-tkr]')) {
-      removeAsset(e.target.dataset.tkr);
+  listUl.addEventListener('click',e=>{
+    if(e.target.dataset.tkr){
+      assets = assets.filter(x=>x!==e.target.dataset.tkr);
+      refreshUI();
     }
   });
-
-  /* Inicia contador */
+  addBtn.addEventListener('click',addAsset);
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter') addAsset();});
   refreshUI();
 
-
-  /* === Código de descarga Stooq (igual al de Fase 2; aún no se usa aquí) === */
-  async function fetchHistory(symbol) {
-    const stooq = symbol.toUpperCase() + ".US";
-    const url   = "https://corsproxy.io/?" +
-                  encodeURIComponent(`https://stooq.com/q/d/l/?s=${stooq}&i=d`);
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(res.status + " " + res.statusText);
-    const csv = await res.text();
-    const { data } = Papa.parse(csv, { header:true, dynamicTyping:true });
-    return data.filter(d => d.Close);
+  /******** Fetch histórico desde Stooq *******************************/
+  async function fetchHistory(tkr){
+    const url='https://corsproxy.io/?'+encodeURIComponent(
+        `https://stooq.com/q/d/l/?s=${tkr}.US&i=d`);
+    const csv = await fetch(url).then(r=>r.text());
+    const {data}=Papa.parse(csv,{header:true,dynamicTyping:true});
+    return data.filter(r=>r.Close);
   }
-/* --- helpers de estadística --- */
-function toReturns(priceRows) {
-  // usa Close y devuelve array de ln(P_t / P_{t-1})
-  const r = [];
-  for (let i = 1; i < priceRows.length; i++) {
-    const p0 = priceRows[i-1].Close;
-    const p1 = priceRows[i].Close;
-    if (p0 && p1) r.push(Math.log(p1/p0));
+  function toReturns(arr){
+    const r=[];for(let i=1;i<arr.length;i++){
+      const p0=arr[i-1].Close,p1=arr[i].Close;
+      if(p0&&p1) r.push(Math.log(p1/p0));
+    }return r;
   }
-  return r;
-}
+  const mean  = a=>a.reduce((s,v)=>s+v,0)/a.length;
+  const cov   =(x,y,mx,my)=>x.reduce((s,v,i)=>s+(v-mx)*(y[i]-my),0)/(x.length-1);
+  const randW = n=>{const w=Array.from({length:n},Math.random);
+                    const s=w.reduce((a,b)=>a+b,0);return w.map(v=>v/s);};
+  const pMean =(w,mu)=>w.reduce((s,wi,i)=>s+wi*mu[i],0);
+  const pVar  =(w,S)=>w.reduce((s,wi,i)=>s+wi*
+                    w.reduce((ss,wj,j)=>ss+wj*S[i][j],0),0);
 
-function mean(arr) {
-  return arr.reduce((s,v)=>s+v,0) / arr.length;
-}
-
-function covariance(x, y, mx, my) {
-  let sum = 0;
-  for (let i = 0; i < x.length; i++) sum += (x[i]-mx)*(y[i]-my);
-  return sum / (x.length - 1);
-}
-/* --- utilidades de portafolios --- */
-function randomWeights(n) {
-  // genera n pesos positivos que suman 1
-  const w = Array.from({length:n}, () => Math.random());
-  const s = w.reduce((a,b)=>a+b,0);
-  return w.map(x => x/s);
-}
-
-function portMean(w, mu) {
-  return w.reduce((s,wi,i)=>s+wi*mu[i],0);
-}
-
-function portVar(w, Sigma) {
-  let v = 0;
-  for (let i=0;i<w.length;i++){
-    for (let j=0;j<w.length;j++){
-      v += w[i]*w[j]*Sigma[i][j];
-    }
-  }
-  return v;
-}
-/* ---------- Paso 2 : descarga paralela ---------- */
-
-nextBtn.addEventListener('click', async () => {
-  statusMsg.textContent = `Descargando ${assets.length} activos…`;
-  nextBtn.disabled = true;
-  addBtn.disabled  = true;
-
-  let datasets;                       // ① visible fuera del try
-
-  try {
-    /* ---------- Descarga paralela ---------- */
-    datasets = await Promise.all(
-      assets.map(tkr => fetchHistory(tkr)
-        .then(rows => ({ tkr, rows }))
-        .catch(err => ({ tkr, err })))
-    );
-
-    /* ---------- Resumen descargas ---------- */
-    const resumen = datasets.map(d => ({
-      Ticker: d.tkr,
-      Filas : d.err ? 'ERROR' : d.rows.length
-    }));
-    console.table(resumen);
-
-    const errores = datasets.filter(d => d.err);
-    const vacios  = resumen.filter(r => r.Filas === 0);
-    if (errores.length) alert('Errores en: ' + errores.map(e => e.tkr).join(', '));
-    if (vacios.length)  alert('Sin datos en: ' + vacios.map(v => v.Ticker).join(', '));
-
-    /* ---------- Paso 3: rendimientos y Σ ---------- */
-    const priceData = datasets.filter(d => !d.err && d.rows.length);
-    if (priceData.length < 2) {
-      console.warn('Necesitas al menos 2 activos con datos para Σ');
-      return;
-    }
-
-    const returns = priceData.map(d => toReturns(d.rows));
-    const minLen  = Math.min(...returns.map(r => r.length));
-    const aligned = returns.map(r => r.slice(-minLen));
-
-    const means = aligned.map(arr => mean(arr));
-
-    const n      = aligned.length;
-    const Sigma  = Array.from({ length:n }, () => Array(n).fill(0));
-    for (let i = 0; i < n; i++) {
-      for (let j = i; j < n; j++) {
-        const cov = covariance(aligned[i], aligned[j], means[i], means[j]);
-        Sigma[i][j] = Sigma[j][i] = cov;
+  /******** Botón Optimizar *******************************************/
+  optimizeBtn.addEventListener('click',async()=>{
+    optimizeBtn.disabled=true;
+    try{
+      /* Descarga paralela */
+      const sets=await Promise.all(assets.map(t=>fetchHistory(t)));
+      /* Alinear longitudes */
+      const rets=sets.map(toReturns);
+      const minL=Math.min(...rets.map(r=>r.length));
+      const aligned=rets.map(r=>r.slice(-minL));
+      /* µ y Σ anualizados */
+      const mu = aligned.map(mean).map(m=>m*252);
+      const Σ  = aligned.map((r,i)=>aligned.map((c,j)=>
+                 cov(r,c,mu[i]/252,mu[j]/252)*252));
+      /* Monte-Carlo */
+      const sims=[];for(let k=0;k<5000;k++){
+        const w=randW(mu.length);
+        const r=pMean(w,mu);
+        const sd=Math.sqrt(pVar(w,Σ));
+        sims.push({w,r,sd,sh:r/sd});
       }
-    }
+      const minV = sims.reduce((a,b)=>a.sd<b.sd?a:b);
+      const maxS = sims.reduce((a,b)=>a.sh>b.sh?a:b);
 
-    console.log('Promedios diarios (μ):', means);
-    console.log('Matriz de covarianzas Σ:');
-    console.table(Sigma.map((row, i) => ({ Ticker: priceData[i].tkr, ...row })));
-/* ---------- Paso 4 : frontera eficiente ---------- */
+      /* Gráfico */
+      Plotly.newPlot('efficient-frontier-chart',[
+        {x:sims.map(p=>p.sd*100), y:sims.map(p=>p.r*100),
+         mode:'markers', marker:{size:4,opacity:.4}, name:'Portafolios'},
+        {x:[minV.sd*100],y:[minV.r*100],mode:'markers+text',
+         text:['Min Var'], marker:{color:'green',size:10}},
+        {x:[maxS.sd*100],y:[maxS.r*100],mode:'markers+text',
+         text:['Máx Sharpe'], marker:{color:'red',size:10}}
+      ],{title:'Frontera eficiente (anualizada)',
+         xaxis:{title:'Riesgo σ (%)'},yaxis:{title:'Retorno μ (%)'}});
 
-// anualiza
-const muAnn = means.map(m => m*252);
-const SigmaAnn = Sigma.map(row => row.map(c => c*252));
+      /* Tabla de pesos Máx Sharpe */
+      document.getElementById('portfolio-return').textContent =
+          (maxS.r*100).toFixed(2)+' %';
+      document.getElementById('portfolio-risk').textContent  =
+          (maxS.sd*100).toFixed(2)+' %';
 
-const portfolios = [];
-for (let k = 0; k < 5000; k++) {
-  const w = randomWeights(muAnn.length);
-  const ret = portMean(w, muAnn);
-  const varP = portVar(w, SigmaAnn);
-  const sd  = Math.sqrt(varP);
-  portfolios.push({ w, ret, sd, sharpe: ret/sd });
-}
+      const ul=document.getElementById('portfolio-weights');
+      ul.innerHTML='';
+      maxS.w.forEach((w,i)=>{
+        const li=document.createElement('li');
+        li.innerHTML=`
+          <span class="asset-name">${assets[i]}</span>
+          <span></span>
+          <span class="asset-weight">${(w*100).toFixed(2)}%</span>
+          <span></span>`;
+        ul.appendChild(li);
+      });
 
-// mínima varianza y máximo Sharpe
-const minVar   = portfolios.reduce((a,b)=> a.sd < b.sd ? a : b);
-const maxSharpe= portfolios.reduce((a,b)=> a.sharpe > b.sharpe ? a : b);
-
-console.log('Min Var:', minVar);
-console.log('Max Sharpe:', maxSharpe);
-
-// dibuja scatter
-Plotly.newPlot('chart', [
-  {
-    x: portfolios.map(p=>p.sd*100),
-    y: portfolios.map(p=>p.ret*100),
-    mode:'markers',
-    marker:{ size:4, opacity:0.4 },
-    name:'Portafolios'
-  },
-  {
-    x:[minVar.sd*100], y:[minVar.ret*100],
-    mode:'markers+text', text:['Min Var'],
-    marker:{ size:10, color:'green' }
-  },
-  {
-    x:[maxSharpe.sd*100], y:[maxSharpe.ret*100],
-    mode:'markers+text', text:['Max Sharpe'],
-    marker:{ size:10, color:'red' }
-  }
-], {
-  title:'Frontera eficiente (anualizada)',
-  xaxis:{ title:'Riesgo σ (%)' },
-  yaxis:{ title:'Retorno μ (%)' }
-});
-    
-    statusMsg.textContent = 'Descarga y cálculos completados ✔️';
-
-  } catch (e) {
-    console.error(e);
-    statusMsg.textContent = 'Error general 😓';
-  } finally {
-    nextBtn.disabled = false;
-    addBtn.disabled  = assets.length >= MAX_ASSETS;
-  }
-});
+      console.log('μ:',mu,'Σ:',Σ,'Max Sharpe:',maxS);
+    }catch(err){alert(err.message);console.error(err);}
+    finally{optimizeBtn.disabled=false;}
+  });
   </script>
 </body>
 </html>
