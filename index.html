@@ -366,6 +366,25 @@
         <p id="assetCounter" class="text-sm" style="margin:4px 0;"></p>
       </div>
 
+      <!-- ▌ NUEVO : monto a invertir + selector de riesgo ---------------->
+<div class="control-group">
+  <label for="investment-amount">Monto a Invertir (USD):</label>
+  <input type="number" id="investment-amount" value="10000"
+         min="0" step="100">
+</div>
+
+<div class="slider-container control-group">
+  <label for="risk-tolerance">
+        Preferencia Riesgo / Retorno
+  </label>
+  <input type="range" id="risk-tolerance" min="0" max="100" value="50">
+  <div class="slider-labels">
+    <span>Conservador</span><span>Agresivo</span>
+  </div>
+</div>
+<!-- ▌ fin bloque nuevo ---------------------------------------------->
+
+
       <!-- ④ botón principal -->
       <button id="optimizeBtn" class="button success" style="width:100%;">Optimizar Portafolio</button>
     </aside>
@@ -384,7 +403,7 @@
           <p><strong>Retorno&nbsp;μ (anual):</strong> <span id="portfolio-return">–</span></p>
           <p><strong>Riesgo&nbsp;σ (anual):</strong> <span id="portfolio-risk">–</span></p>
         </div>
-        <h4>Peso por activo:</h4>
+        <h4 id="total-investment-display">Distribución óptima de activos:</h4>
         <ul class="weights-list" id="portfolio-weights"></ul>
       </div>
     </main>
@@ -401,6 +420,8 @@
   const addBtn     = document.getElementById('addAssetBtn');
   const inp        = document.getElementById('asset-search');
   const optimizeBtn= document.getElementById('optimizeBtn');
+    const amountInput = document.getElementById('investment-amount');
+const riskRange   = document.getElementById('risk-tolerance');  // (lo usaremos pronto)
   let assets = [];                       // tickers en mayúsculas
 
   function refreshUI () {
@@ -453,59 +474,100 @@
                     w.reduce((ss,wj,j)=>ss+wj*S[i][j],0),0);
 
   /******** Botón Optimizar *******************************************/
-  optimizeBtn.addEventListener('click',async()=>{
-    optimizeBtn.disabled=true;
-    try{
-      /* Descarga paralela */
-      const sets=await Promise.all(assets.map(t=>fetchHistory(t)));
-      /* Alinear longitudes */
-      const rets=sets.map(toReturns);
-      const minL=Math.min(...rets.map(r=>r.length));
-      const aligned=rets.map(r=>r.slice(-minL));
-      /* µ y Σ anualizados */
-      const mu = aligned.map(mean).map(m=>m*252);
-      const Σ  = aligned.map((r,i)=>aligned.map((c,j)=>
-                 cov(r,c,mu[i]/252,mu[j]/252)*252));
-      /* Monte-Carlo */
-      const sims=[];for(let k=0;k<5000;k++){
-        const w=randW(mu.length);
-        const r=pMean(w,mu);
-        const sd=Math.sqrt(pVar(w,Σ));
-        sims.push({w,r,sd,sh:r/sd});
+optimizeBtn.addEventListener('click', async () => {
+  optimizeBtn.disabled = true;
+
+  try {
+    /* ---------- 1. Descarga paralela ---------- */
+    const sets = await Promise.all(assets.map(t => fetchHistory(t)));
+
+    /* ---------- 2. Alinear longitudes ---------- */
+    const rets  = sets.map(toReturns);
+    const minL  = Math.min(...rets.map(r => r.length));
+    const aligned = rets.map(r => r.slice(-minL));
+
+    /* ---------- 3. µ y Σ anualizados ---------- */
+    const mu = aligned.map(mean).map(m => m * 252);
+    const Σ  = aligned.map((r, i) => aligned.map((c, j) =>
+                 cov(r, c, mu[i] / 252, mu[j] / 252) * 252));
+
+    /* ---------- 4. Monte-Carlo ---------- */
+    const sims = [];
+    for (let k = 0; k < 5000; k++) {
+      const w  = randW(mu.length);
+      const r  = pMean(w, mu);
+      const sd = Math.sqrt(pVar(w, Σ));
+      sims.push({ w, r, sd, sh: r / sd });
+    }
+    const minV = sims.reduce((a, b) => (a.sd < b.sd ? a : b));
+    const maxS = sims.reduce((a, b) => (a.sh > b.sh ? a : b));
+
+    /* ---------- 5. Gráfico ---------- */
+    document.getElementById('efficient-frontier-chart').innerHTML = '';
+    Plotly.newPlot('efficient-frontier-chart', [
+      {
+        x: sims.map(p => p.sd * 100),
+        y: sims.map(p => p.r * 100),
+        mode: 'markers',
+        marker: { size: 4, opacity: 0.4 },
+        name: 'Portafolios'
+      },
+      {
+        x: [minV.sd * 100],
+        y: [minV.r * 100],
+        mode: 'markers+text',
+        text: ['Min Var'],
+        marker: { color: 'green', size: 10 }
+      },
+      {
+        x: [maxS.sd * 100],
+        y: [maxS.r * 100],
+        mode: 'markers+text',
+        text: ['Máx Sharpe'],
+        marker: { color: 'red', size: 10 }
       }
-      const minV = sims.reduce((a,b)=>a.sd<b.sd?a:b);
-      const maxS = sims.reduce((a,b)=>a.sh>b.sh?a:b);
+    ], {
+      title: 'Frontera eficiente (anualizada)',
+      xaxis: { title: 'Riesgo σ (%)' },
+      yaxis: { title: 'Retorno μ (%)' }
+    });
 
-      /* Gráfico */
-      document.getElementById('efficient-frontier-chart').innerHTML = '';   // ← NUEVO
-      Plotly.newPlot('efficient-frontier-chart',[
-        {x:sims.map(p=>p.sd*100), y:sims.map(p=>p.r*100),
-         mode:'markers', marker:{size:4,opacity:.4}, name:'Portafolios'},
-        {x:[minV.sd*100],y:[minV.r*100],mode:'markers+text',
-         text:['Min Var'], marker:{color:'green',size:10}},
-        {x:[maxS.sd*100],y:[maxS.r*100],mode:'markers+text',
-         text:['Máx Sharpe'], marker:{color:'red',size:10}}
-      ],{title:'Frontera eficiente (anualizada)',
-         xaxis:{title:'Riesgo σ (%)'},yaxis:{title:'Retorno μ (%)'}});
+    /* ---------- 6. Mostrar métricas ---------- */
+    document.getElementById('portfolio-return').textContent =
+        (maxS.r * 100).toFixed(2) + ' %';
+    document.getElementById('portfolio-risk').textContent  =
+        (maxS.sd * 100).toFixed(2) + ' %';
 
-      /* Tabla de pesos Máx Sharpe */
-      document.getElementById('portfolio-return').textContent =
-          (maxS.r*100).toFixed(2)+' %';
-      document.getElementById('portfolio-risk').textContent  =
-          (maxS.sd*100).toFixed(2)+' %';
+    /* ---------- 7. Lista de pesos + montos ---------- */
+    const total = parseFloat(document.getElementById('investment-amount').value) || 0;
+    const title = `Distribución óptima de activos (${total.toLocaleString('en-US', {
+                     style: 'currency', currency: 'USD', minimumFractionDigits: 0
+                   })} invertidos):`;
+    document.getElementById('total-investment-display').textContent = title;
 
-      const ul=document.getElementById('portfolio-weights');
-      ul.innerHTML='';
-      maxS.w.forEach((w,i)=>{
-        const li=document.createElement('li');
-        li.innerHTML=`
-          <span class="asset-name">${assets[i]}</span>
-          <span></span>
-          <span class="asset-weight">${(w*100).toFixed(2)}%</span>
-          <span></span>`;
-        ul.appendChild(li);
-      });
+    const ul = document.getElementById('portfolio-weights');
+    ul.innerHTML = '';
+    maxS.w.forEach((w, i) => {
+      const usd = w * total;
+      const li  = document.createElement('li');
+      li.innerHTML = `
+        <span class="asset-name">${assets[i]}</span>
+        <span></span>
+        <span class="asset-weight">${(w * 100).toFixed(2)} %</span>
+        <span class="asset-amount">${usd.toLocaleString('en-US', {
+              style: 'currency', currency: 'USD', minimumFractionDigits: 0
+        })}</span>`;
+      ul.appendChild(li);
+    });
 
+    console.log('μ:', mu, 'Σ:', Σ, 'Max Sharpe:', maxS);
+  } catch (err) {
+    alert(err.message);
+    console.error(err);
+  } finally {
+    optimizeBtn.disabled = false;
+  }
+});
       console.log('μ:',mu,'Σ:',Σ,'Max Sharpe:',maxS);
     }catch(err){alert(err.message);console.error(err);}
     finally{optimizeBtn.disabled=false;}
