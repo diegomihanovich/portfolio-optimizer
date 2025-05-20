@@ -7,7 +7,337 @@
 
   <!-- Tus fuentes + estilos originales ------------------------------->
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-  <style>/* … TODA tu hoja de estilos sin cambios … */</style>
+  <style>
+        :root {
+            --primary-color: #007BFF; /* Azul primario vibrante */
+            --secondary-color: #6C757D; /* Gris secundario */
+            --success-color: #28A745; /* Verde éxito */
+            --danger-color: #DC3545; /* Rojo peligro */
+            --warning-color: #FFC107; /* Amarillo advertencia */
+            --info-color: #17A2B8; /* Turquesa info */
+            --light-bg: #F8F9FA; /* Fondo muy claro */
+            --dark-text: #212529; /* Texto oscuro principal */
+            --medium-text: #495057; /* Texto medio */
+            --light-text: #6C757D; /* Texto claro */
+            --border-color: #DEE2E6; /* Color de borde sutil */
+            --card-bg: #FFFFFF; /* Fondo de tarjetas */
+            --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 8px rgba(0,0,0,0.07);
+            --border-radius: 6px; /* Radio de borde uniforme */
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--light-bg);
+            color: var(--dark-text);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        header {
+            background-color: var(--dark-text);
+            color: var(--light-bg);
+            padding: 25px 20px;
+            text-align: center;
+            box-shadow: var(--shadow-md);
+        }
+        header h1 {
+            margin: 0;
+            font-size: 2.2em;
+            font-weight: 300;
+        }
+        .container {
+            display: flex;
+            flex: 1;
+            padding: 25px;
+            gap: 30px;
+        }
+        .sidebar {
+            width: 380px; /* Un poco más ancho para la nueva info */
+            background-color: var(--card-bg);
+            padding: 30px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-md);
+            display: flex;
+            flex-direction: column;
+        }
+        .main-content {
+            flex: 1;
+            background-color: var(--card-bg);
+            padding: 30px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-md);
+            display: flex;
+            flex-direction: column;
+        }
+        .control-group {
+            margin-bottom: 25px;
+        }
+        .control-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 500;
+            color: var(--medium-text);
+            font-size: 0.95em;
+        }
+        .control-group input[type="text"],
+        .control-group input[type="number"],
+        .control-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            box-sizing: border-box;
+            font-size: 1em;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .control-group input[type="text"]:focus,
+        .control-group input[type="number"]:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+            outline: none;
+        }
+        .selected-assets-list {
+            list-style: none;
+            padding: 0;
+            max-height: 200px; /* Aumentado un poco */
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            margin-top: 10px;
+        }
+        .selected-assets-list li {
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9em;
+        }
+        .selected-assets-list li:last-child {
+            border-bottom: none;
+        }
+        .selected-assets-list .asset-info {
+            display: flex;
+            flex-direction: column;
+        }
+        .selected-assets-list .asset-name-list {
+            font-weight: 500;
+        }
+        .selected-assets-list .asset-volatility-list {
+            font-size: 0.85em;
+            color: var(--light-text);
+        }
+        .selected-assets-list button {
+            background-color: var(--danger-color);
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 0.8em;
+            transition: background-color 0.2s ease;
+            margin-left: 10px; /* Espacio para el botón */
+        }
+        .selected-assets-list button:hover {
+            background-color: #c82333;
+        }
+        .chart-placeholder {
+            width: 100%;
+            height: 400px;
+            background-color: #e9ecef;
+            border: 2px dashed #adb5bd;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--light-text);
+            font-size: 1.2em;
+            border-radius: var(--border-radius);
+            margin-bottom: 30px;
+            text-align: center;
+            position: relative;
+        }
+        .section-title {
+            font-size: 1.5em;
+            font-weight: 500;
+            color: var(--dark-text);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .portfolio-details h4 {
+            font-size: 1.1em;
+            color: var(--medium-text);
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+        .weights-list {
+            list-style: none;
+            padding: 0;
+        }
+        .weights-list li {
+            background-color: var(--light-bg);
+            padding: 12px 15px;
+            border-radius: var(--border-radius);
+            margin-bottom: 10px;
+            display: grid; /* Cambiado a grid para mejor alineación de múltiples datos */
+            grid-template-columns: auto 1fr auto auto; /* Nombre, Volatilidad, Peso, Monto */
+            gap: 15px; /* Espacio entre columnas */
+            align-items: center;
+            border: 1px solid #e9ecef;
+        }
+        .weights-list .asset-name {
+            font-weight: 500;
+            color: var(--dark-text);
+        }
+        .weights-list .asset-individual-volatility {
+            font-size: 0.85em;
+            color: var(--warning-color); /* Amarillo/Naranja para destacar el riesgo */
+            font-style: italic;
+            justify-self: start; /* Alinea a la izquierda dentro de su celda */
+        }
+        .weights-list .asset-weight {
+            color: var(--success-color);
+            font-weight: 700;
+            font-size: 1.05em;
+            justify-self: end; /* Alinea a la derecha */
+        }
+        .weights-list .asset-amount {
+            color: var(--primary-color);
+            font-weight: 500;
+            justify-self: end; /* Alinea a la derecha */
+            min-width: 100px; /* Para asegurar espacio */
+            text-align: right;
+        }
+        .risk-return-display {
+            margin-bottom: 25px;
+            padding: 20px;
+            background-color: #e7f3fe;
+            border-left: 5px solid var(--primary-color);
+            border-radius: 0 var(--border-radius) var(--border-radius) 0;
+        }
+        .risk-return-display p {
+            margin: 8px 0;
+            font-size: 1.1em;
+        }
+        .risk-return-display strong {
+            color: var(--primary-color);
+        }
+        .button {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 1.05em;
+            font-weight: 500;
+            text-align: center;
+            display: inline-block;
+            margin-top: 10px;
+            transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+        }
+        .button:hover {
+            background-color: #0069d9;
+            box-shadow: 0 4px 8px rgba(0,123,255,0.2);
+            transform: translateY(-2px);
+        }
+        .button:active {
+            transform: translateY(0px);
+            box-shadow: var(--shadow-sm);
+        }
+        .button.secondary {
+            background-color: var(--secondary-color);
+        }
+        .button.secondary:hover {
+            background-color: #5a6268;
+            box-shadow: 0 4px 8px rgba(108,117,125,0.2);
+        }
+        .button.success {
+            background-color: var(--success-color);
+        }
+        .button.success:hover {
+            background-color: #218838;
+            box-shadow: 0 4px 8px rgba(40,167,69,0.2);
+        }
+        footer {
+            text-align: center;
+            padding: 25px;
+            background-color: var(--dark-text);
+            color: #adb5bd;
+            font-size: 0.9em;
+            margin-top: auto;
+        }
+        .slider-container {
+            margin-bottom: 25px;
+        }
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: var(--primary-color);
+        }
+        .slider-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85em;
+            color: var(--light-text);
+            margin-top: 8px;
+        }
+        .info-icon {
+            cursor: help;
+            margin-left: 8px;
+            color: var(--info-color); /* Usando el color info */
+            border: 1px solid var(--border-color);
+            background-color: var(--light-bg);
+            border-radius: 50%;
+            padding: 3px 8px;
+            font-size: 0.85em;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            line-height: 1;
+            transition: all 0.2s ease;
+            text-decoration: none; /* Para que no parezca un link */
+        }
+        .info-icon:hover {
+            background-color: var(--info-color);
+            color: white;
+            border-color: var(--info-color);
+        }
+        .advice-section {
+            margin-top: 25px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 20px;
+        }
+        .advice-section summary {
+            cursor: pointer;
+            font-weight: 500;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+            font-size: 1.05em;
+            list-style-type: '► '; /* Un pequeño indicador, se puede mejorar con SVG */
+        }
+        .advice-section details[open] summary {
+            list-style-type: '▼ ';
+        }
+        .advice-section details p {
+            font-size: 0.9em;
+            color: var(--medium-text);
+            padding-left: 20px;
+            border-left: 3px solid var(--primary-color);
+            margin-bottom: 12px;
+            background-color: #fbfdff;
+            padding-top: 8px;
+            padding-bottom: 8px;
+            border-radius: 0 var(--border-radius) var(--border-radius) 0;
+        }
+</style>
 
   <!-- Librerías externas (CDN) --------------------------------------->
   <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
