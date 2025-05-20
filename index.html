@@ -143,7 +143,27 @@ function covariance(x, y, mx, my) {
   for (let i = 0; i < x.length; i++) sum += (x[i]-mx)*(y[i]-my);
   return sum / (x.length - 1);
 }
+/* --- utilidades de portafolios --- */
+function randomWeights(n) {
+  // genera n pesos positivos que suman 1
+  const w = Array.from({length:n}, () => Math.random());
+  const s = w.reduce((a,b)=>a+b,0);
+  return w.map(x => x/s);
+}
 
+function portMean(w, mu) {
+  return w.reduce((s,wi,i)=>s+wi*mu[i],0);
+}
+
+function portVar(w, Sigma) {
+  let v = 0;
+  for (let i=0;i<w.length;i++){
+    for (let j=0;j<w.length;j++){
+      v += w[i]*w[j]*Sigma[i][j];
+    }
+  }
+  return v;
+}
 /* ---------- Paso 2 : descarga paralela ---------- */
 
 nextBtn.addEventListener('click', async () => {
@@ -198,7 +218,53 @@ nextBtn.addEventListener('click', async () => {
     console.log('Promedios diarios (μ):', means);
     console.log('Matriz de covarianzas Σ:');
     console.table(Sigma.map((row, i) => ({ Ticker: priceData[i].tkr, ...row })));
+/* ---------- Paso 4 : frontera eficiente ---------- */
 
+// anualiza
+const muAnn = means.map(m => m*252);
+const SigmaAnn = Sigma.map(row => row.map(c => c*252));
+
+const portfolios = [];
+for (let k = 0; k < 5000; k++) {
+  const w = randomWeights(muAnn.length);
+  const ret = portMean(w, muAnn);
+  const varP = portVar(w, SigmaAnn);
+  const sd  = Math.sqrt(varP);
+  portfolios.push({ w, ret, sd, sharpe: ret/sd });
+}
+
+// mínima varianza y máximo Sharpe
+const minVar   = portfolios.reduce((a,b)=> a.sd < b.sd ? a : b);
+const maxSharpe= portfolios.reduce((a,b)=> a.sharpe > b.sharpe ? a : b);
+
+console.log('Min Var:', minVar);
+console.log('Max Sharpe:', maxSharpe);
+
+// dibuja scatter
+Plotly.newPlot('chart', [
+  {
+    x: portfolios.map(p=>p.sd*100),
+    y: portfolios.map(p=>p.ret*100),
+    mode:'markers',
+    marker:{ size:4, opacity:0.4 },
+    name:'Portafolios'
+  },
+  {
+    x:[minVar.sd*100], y:[minVar.ret*100],
+    mode:'markers+text', text:['Min Var'],
+    marker:{ size:10, color:'green' }
+  },
+  {
+    x:[maxSharpe.sd*100], y:[maxSharpe.ret*100],
+    mode:'markers+text', text:['Max Sharpe'],
+    marker:{ size:10, color:'red' }
+  }
+], {
+  title:'Frontera eficiente (anualizada)',
+  xaxis:{ title:'Riesgo σ (%)' },
+  yaxis:{ title:'Retorno μ (%)' }
+});
+    
     statusMsg.textContent = 'Descarga y cálculos completados ✔️';
 
   } catch (e) {
