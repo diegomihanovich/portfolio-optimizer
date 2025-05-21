@@ -367,6 +367,14 @@
     <option value="m">Mensual</option>
   </select>
 </div>
+      <div class="control-group">
+  <label>Desde:</label>
+  <input type="date" id="from-date">
+</div>
+<div class="control-group">
+  <label>Hasta:</label>
+  <input type="date" id="to-date">
+</div>
       <!-- ③ lista dinámica -->
       <div class="control-group">
         <label>Activos Seleccionados:</label>
@@ -468,6 +476,9 @@ const riskRange   = document.getElementById('risk-tolerance');  // (lo usaremos 
   /******** Fetch histórico desde Stooq *******************************/
   async function fetchHistory(tkr){
   const freq = document.getElementById('freq-select').value;   //  ← NUEVO
+    // factor de anualización según frecuencia
+const annMap = { d: 252, w: 52, m: 12 };
+const ann    = annMap[freq] || 252;
   const url  = 'https://corsproxy.io/?' +
                encodeURIComponent(`https://stooq.com/q/d/l/?s=${tkr}.US&i=${freq}`);
   const csv  = await fetch(url).then(r=>r.text());
@@ -487,6 +498,15 @@ const riskRange   = document.getElementById('risk-tolerance');  // (lo usaremos 
   const pMean =(w,mu)=>w.reduce((s,wi,i)=>s+wi*mu[i],0);
   const pVar  =(w,S)=>w.reduce((s,wi,i)=>s+wi*
                     w.reduce((ss,wj,j)=>ss+wj*S[i][j],0),0);
+    const from = document.getElementById('from-date').value;
+const to   = document.getElementById('to-date').value;
+
+return data.filter(r =>{
+  if (!r.Date || !r.Close) return false;
+  if (from && r.Date < from) return false;
+  if (to   && r.Date > to)   return false;
+  return true;
+});
 
   /******** Botón Optimizar *******************************************/
 optimizeBtn.addEventListener('click', async () => {
@@ -502,9 +522,9 @@ optimizeBtn.addEventListener('click', async () => {
     const aligned = rets.map(r => r.slice(-minL));
 
     /* ---------- 3. µ y Σ anualizados ---------- */
-    const mu = aligned.map(mean).map(m => m * 252);
-    const Σ  = aligned.map((r, i) => aligned.map((c, j) =>
-                 cov(r, c, mu[i] / 252, mu[j] / 252) * 252));
+    const mu = aligned.map(mean).map(m => m * ann);        // ← usa ann
+const Σ  = aligned.map((r,i)=>aligned.map((c,j)=>
+              cov(r,c, mu[i]/ann, mu[j]/ann) * ann));  // ← usa ann
 
     /* ---------- 4. Monte-Carlo ---------- */
     const sims = [];
