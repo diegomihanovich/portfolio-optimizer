@@ -358,7 +358,15 @@
         <!-- ② botón añadir -->
         <button id="addAssetBtn" class="button secondary" style="margin-top:10px; width:100%;">Añadir Activo</button>
       </div>
-
+<!-- Frecuencia de datos -->
+<div class="control-group">
+  <label for="freq-select">Frecuencia de datos:</label>
+  <select id="freq-select">
+    <option value="d" selected>Diaria</option>
+    <option value="w">Semanal</option>
+    <option value="m">Mensual</option>
+  </select>
+</div>
       <!-- ③ lista dinámica -->
       <div class="control-group">
         <label>Activos Seleccionados:</label>
@@ -453,9 +461,10 @@ const riskRange   = document.getElementById('risk-tolerance');  // (lo usaremos 
 
   /******** Fetch histórico desde Stooq *******************************/
   async function fetchHistory(tkr){
-    const url='https://corsproxy.io/?'+encodeURIComponent(
-        `https://stooq.com/q/d/l/?s=${tkr}.US&i=d`);
-    const csv = await fetch(url).then(r=>r.text());
+  const freq = document.getElementById('freq-select').value;   //  ← NUEVO
+  const url  = 'https://corsproxy.io/?' +
+               encodeURIComponent(`https://stooq.com/q/d/l/?s=${tkr}.US&i=${freq}`);
+  const csv  = await fetch(url).then(r=>r.text());
     const {data}=Papa.parse(csv,{header:true,dynamicTyping:true});
     return data.filter(r=>r.Close);
   }
@@ -472,7 +481,10 @@ const riskRange   = document.getElementById('risk-tolerance');  // (lo usaremos 
   const pMean =(w,mu)=>w.reduce((s,wi,i)=>s+wi*mu[i],0);
   const pVar  =(w,S)=>w.reduce((s,wi,i)=>s+wi*
                     w.reduce((ss,wj,j)=>ss+wj*S[i][j],0),0);
-
+<div class="control-group">
+  <label for="rf-input">Tasa libre de riesgo&nbsp;(anual&nbsp;%):</label>
+  <input type="number" id="rf-input" value="2" min="0" step="0.25">
+</div>
   /******** Botón Optimizar *******************************************/
 optimizeBtn.addEventListener('click', async () => {
   optimizeBtn.disabled = true;
@@ -497,10 +509,15 @@ optimizeBtn.addEventListener('click', async () => {
       const w  = randW(mu.length);
       const r  = pMean(w, mu);
       const sd = Math.sqrt(pVar(w, Σ));
+      const rf = parseFloat(document.getElementById('rf-input').value)/100;  // NUEVO
       sims.push({ w, r, sd, sh: r / sd });
     }
     const minV = sims.reduce((a, b) => (a.sd < b.sd ? a : b));
     const maxS = sims.reduce((a, b) => (a.sh > b.sh ? a : b));
+    const alpha = riskRange.value / 100;                   // 0-1
+const wStar = minV.w.map((w,i)=> w*(1-alpha) + maxS.w[i]*alpha);
+const rStar = pMean(wStar, mu);
+const sdStar= Math.sqrt(pVar(wStar, Σ));
 
     /* ---------- 5. Gráfico ---------- */
     document.getElementById('efficient-frontier-chart').innerHTML = '';
@@ -530,14 +547,20 @@ optimizeBtn.addEventListener('click', async () => {
       title: 'Frontera eficiente (anualizada)',
       xaxis: { title: 'Riesgo σ (%)' },
       yaxis: { title: 'Retorno μ (%)' }
+      {
+  x:[sdStar*100], y:[rStar*100],
+  mode:'markers+text',
+  text:['Tu elección'],
+  marker:{color:'gold', size:12, symbol:'star'}
+},
     });
 
     /* ---------- 6. Mostrar métricas ---------- */
     document.getElementById('portfolio-return').textContent =
-        (maxS.r * 100).toFixed(2) + ' %';
-    document.getElementById('portfolio-risk').textContent  =
-        (maxS.sd * 100).toFixed(2) + ' %';
-
+    (rStar*100).toFixed(2)+' %';
+document.getElementById('portfolio-risk').textContent  =
+    (sdStar*100).toFixed(2)+' %';
+    
     /* ---------- 7. Lista de pesos + montos ---------- */
     const total = parseFloat(document.getElementById('investment-amount').value) || 0;
     const title = `Distribución óptima de activos (${total.toLocaleString('en-US', {
