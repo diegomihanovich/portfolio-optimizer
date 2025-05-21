@@ -373,6 +373,12 @@
         <ul class="selected-assets-list" id="assetList"></ul>
         <p id="assetCounter" class="text-sm" style="margin:4px 0;"></p>
       </div>
+      
+      <!-- Tasa libre de riesgo -->
+<div class="control-group">
+  <label for="rf-input">Tasa libre de riesgo&nbsp;(anual&nbsp;%):</label>
+  <input type="number" id="rf-input" value="2" min="0" step="0.25">
+</div>
 
       <!-- ▌ NUEVO : monto a invertir + selector de riesgo ---------------->
 <div class="control-group">
@@ -481,10 +487,7 @@ const riskRange   = document.getElementById('risk-tolerance');  // (lo usaremos 
   const pMean =(w,mu)=>w.reduce((s,wi,i)=>s+wi*mu[i],0);
   const pVar  =(w,S)=>w.reduce((s,wi,i)=>s+wi*
                     w.reduce((ss,wj,j)=>ss+wj*S[i][j],0),0);
-<div class="control-group">
-  <label for="rf-input">Tasa libre de riesgo&nbsp;(anual&nbsp;%):</label>
-  <input type="number" id="rf-input" value="2" min="0" step="0.25">
-</div>
+
   /******** Botón Optimizar *******************************************/
 optimizeBtn.addEventListener('click', async () => {
   optimizeBtn.disabled = true;
@@ -510,7 +513,7 @@ optimizeBtn.addEventListener('click', async () => {
       const r  = pMean(w, mu);
       const sd = Math.sqrt(pVar(w, Σ));
       const rf = parseFloat(document.getElementById('rf-input').value)/100;  // NUEVO
-      sims.push({ w, r, sd, sh: r / sd });
+      sims.push({ w, r, sd, sh: (r - rf) / sd });   // antes era r/sd
     }
     const minV = sims.reduce((a, b) => (a.sd < b.sd ? a : b));
     const maxS = sims.reduce((a, b) => (a.sh > b.sh ? a : b));
@@ -522,38 +525,36 @@ const sdStar= Math.sqrt(pVar(wStar, Σ));
     /* ---------- 5. Gráfico ---------- */
     document.getElementById('efficient-frontier-chart').innerHTML = '';
     Plotly.newPlot('efficient-frontier-chart', [
-      {
-        x: sims.map(p => p.sd * 100),
-        y: sims.map(p => p.r * 100),
-        mode: 'markers',
-        marker: { size: 4, opacity: 0.4 },
-        name: 'Portafolios'
-      },
-      {
-        x: [minV.sd * 100],
-        y: [minV.r * 100],
-        mode: 'markers+text',
-        text: ['Min Var'],
-        marker: { color: 'green', size: 10 }
-      },
-      {
-        x: [maxS.sd * 100],
-        y: [maxS.r * 100],
-        mode: 'markers+text',
-        text: ['Máx Sharpe'],
-        marker: { color: 'red', size: 10 }
-      }
-    ], {
-      title: 'Frontera eficiente (anualizada)',
-      xaxis: { title: 'Riesgo σ (%)' },
-      yaxis: { title: 'Retorno μ (%)' }
-      {
-  x:[sdStar*100], y:[rStar*100],
-  mode:'markers+text',
-  text:['Tu elección'],
-  marker:{color:'gold', size:12, symbol:'star'}
-},
-    });
+  {
+    x: sims.map(p => p.sd*100),
+    y: sims.map(p => p.r*100),
+    mode:'markers',
+    marker:{size:4,opacity:0.4},
+    name:'Portafolios'
+  },
+  {
+    x:[minV.sd*100], y:[minV.r*100],
+    mode:'markers+text',
+    text:['Min Var'],
+    marker:{color:'green',size:10}
+  },
+  {
+    x:[maxS.sd*100], y:[maxS.r*100],
+    mode:'markers+text',
+    text:['Máx Sharpe'],
+    marker:{color:'red',size:10}
+  },
+  {                         /* estrella */
+    x:[sdStar*100], y:[rStar*100],
+    mode:'markers+text',
+    text:['Tu elección'],
+    marker:{color:'gold',size:12,symbol:'star'}
+  }
+], {
+  title:'Frontera eficiente (anualizada)',
+  xaxis:{ title:'Riesgo σ (%)' },
+  yaxis:{ title:'Retorno μ (%)' }
+});
 
     /* ---------- 6. Mostrar métricas ---------- */
     document.getElementById('portfolio-return').textContent =
