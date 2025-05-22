@@ -1,4 +1,3 @@
-<script>
 /* ===== 1. Config & helpers ======================================== */
 const MAX_ASSETS   = 20;
 const listUl       = document.getElementById('assetList');
@@ -159,4 +158,3 @@ optimizeBtn.addEventListener('click', async () => {
     optimizeBtn.disabled = false;
   }
 });
-</script>
