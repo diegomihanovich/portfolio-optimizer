@@ -39,14 +39,21 @@
     <option value="m">Mensual</option>
   </select>
 </div>
-      <div class="control-group">
-  <label>Desde:</label>
-  <input type="date" id="from-date">
+      <!-- ==== Selección rápida de rango ==== -->
+<div class="btn-group control-group" style="display:flex; gap:8px;">
+  <button id="btn-5y" class="button">Últimos 5 años</button>
+  <button id="btn-10y" class="button">Últimos 10 años</button>
+  <button id="btn-custom" class="button">Fechas personalizadas</button>
 </div>
-<div class="control-group">
-  <label>Hasta:</label>
+
+<!-- ==== Calendarios personalizados (oculto por defecto) ==== -->
+<div id="custom-dates" class="control-group" style="display:none;">
+  <label for="from-date">Desde:</label>
+  <input type="date" id="from-date">
+  <label for="to-date">Hasta:</label>
   <input type="date" id="to-date">
 </div>
+
       <!-- ③ lista dinámica -->
       <div class="control-group">
         <label>Activos Seleccionados:</label>
