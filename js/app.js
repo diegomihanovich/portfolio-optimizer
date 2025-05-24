@@ -38,23 +38,20 @@ inp.addEventListener('keydown', e => { if (e.key === 'Enter') addAsset(); });
 refreshUI();
 
 /* ===== 2. Fetch histórico Stooq + filtrado por fecha ============== */
-async function fetchHistory (tkr) {
-  const freq = document.getElementById('freq-select').value;  // d / w / m
+async function fetchHistory(tkr, from, to) {
+  const freq = document.getElementById('freq-select').value; // d / w / m
   const url  = 'https://corsproxy.io/?' +
                encodeURIComponent(`https://stooq.com/q/d/l/?s=${tkr}.US&i=${freq}`);
-  const csv  = await fetch(url).then(r => r.text());
-  const { data } = Papa.parse(csv, { header: true, dynamicTyping: true });
 
-  const from = document.getElementById('from-date').value;
-  const to   = document.getElementById('to-date').value;
+  const csv  = await fetch(url).then(r => r.text());
+  const { data } = Papa.parse(csv, { header:true, dynamicTyping:true });
 
   return data.filter(r => {
     if (!r.Date || !r.Close) return false;
-    if (from && r.Date < from) return false;
-    if (to   && r.Date > to)   return false;
-    return true;
+    return (!from || r.Date >= from) && (!to || r.Date <= to);
   });
 }
+
 function toReturns (rows) {
   const r = [];
   for (let i = 1; i < rows.length; i++) {
