@@ -158,3 +158,65 @@ optimizeBtn.addEventListener('click', async () => {
     optimizeBtn.disabled = false;
   }
 });
+
+// --- refs rápidas a la UI ---
+const ui = {
+  btn5      : document.getElementById('btn-5y'),
+  btn10     : document.getElementById('btn-10y'),
+  btnCustom : document.getElementById('btn-custom'),
+  box       : document.getElementById('custom-date-box'),
+  start     : document.getElementById('startDate'),
+  end       : document.getElementById('endDate'),
+  apply     : document.getElementById('applyDates'),
+  label     : document.getElementById('rangeLabel')
+};
+
+// --- estado global mínimo ---
+const state = { years:null, custom:null };
+
+// --- helpers ---
+function clearActive() {
+  [ui.btn5, ui.btn10, ui.btnCustom].forEach(b=>b.classList.remove('active'));
+  ui.box.style.display = 'none';
+}
+
+function refreshRange() {
+  const today = new Date();
+  let start, end = today.toISOString().slice(0,10);   // "YYYY-MM-DD"
+
+  if (state.custom) {
+    start = state.custom.start;
+    end   = state.custom.end;
+    ui.label.textContent = `De ${start} a ${end}`;
+  } else {
+    start = new Date(today.setFullYear(today.getFullYear() - state.years))
+              .toISOString().slice(0,10);
+    ui.label.textContent = `Últimos ${state.years} años`;
+  }
+
+  // 🔁 tu función original para traer datos y repintar el gráfico
+  fetchAndPlot(start, end);
+}
+
+// --- listeners ---
+ui.btn5.addEventListener('click', ()=>{
+  clearActive(); ui.btn5.classList.add('active');
+  state.years = 5;  state.custom = null;
+  refreshRange();
+});
+
+ui.btn10.addEventListener('click', ()=>{
+  clearActive(); ui.btn10.classList.add('active');
+  state.years = 10; state.custom = null;
+  refreshRange();
+});
+
+ui.btnCustom.addEventListener('click', ()=>{
+  clearActive(); ui.btnCustom.classList.add('active');
+  ui.box.style.display = 'block';
+});
+
+ui.apply.addEventListener('click', ()=>{
+  state.custom = { start: ui.start.value, end: ui.end.value };
+  refreshRange();
+});
