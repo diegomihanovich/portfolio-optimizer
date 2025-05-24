@@ -5,120 +5,94 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Optimizador de Portafolio Pro</title>
 
-  <!-- Tus fuentes + estilos originales ------------------------------->
+  <!-- Fuentes y CSS propio -->
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-  
-  <!-- Aquí va tu CSS externo -->
   <link rel="stylesheet" href="css/style.css">
 
-  <!-- Librerías externas (CDN) --------------------------------------->
+  <!-- Librerías externas -->
   <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+  <!-- Bootstrap 5 bundle (incluye Popper + Toast) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </head>
 <body>
-  <!-- ============  TU PLANTILLA ORIGINAL  ============ -->
-  <!-- (solo se añadieron id que faltaban y se quitó el botón duplicado) -->
 
   <header><h1>Optimizador de Portafolio Pro</h1></header>
 
   <div class="container">
     <aside class="sidebar">
+      <!-- Buscar y añadir activos -->
       <div class="control-group">
         <label for="asset-search">Buscar y Seleccionar Activos</label>
-        <!-- ① input que usará el script -->
         <input type="text" id="asset-search" placeholder="Ticker o Nombre: Ej: AAPL, MSFT…">
-        <!-- ② botón añadir -->
-        <button id="addAssetBtn" class="button secondary" style="margin-top:10px; width:100%;">Añadir Activo</button>
+        <button id="addAssetBtn" class="button secondary" style="margin-top:10px;width:100%">Añadir Activo</button>
       </div>
-<!-- Frecuencia de datos -->
-<div class="control-group">
-  <label for="freq-select">Frecuencia de datos:</label>
-  <select id="freq-select">
-    <option value="d" selected>Diaria</option>
-    <option value="w">Semanal</option>
-    <option value="m">Mensual</option>
-  </select>
-</div>
 
-      <!-- Rango personalizado (oculto al principio) -->
-<div id="custom-date-box" style="display:none" class="mt-2">
-  <label class="form-label mb-0" for="startDate">Desde</label>
-  <input type="date"  id="fromDate" class="form-control">
+      <!-- Frecuencia -->
+      <div class="control-group">
+        <label for="freq-select">Frecuencia de datos:</label>
+        <select id="freq-select">
+          <option value="d" selected>Diaria</option>
+          <option value="w">Semanal</option>
+          <option value="m">Mensual</option>
+        </select>
+      </div>
 
-  <label class="form-label mt-2 mb-0" for="endDate">Hasta</label>
-  <input type="date"  id="toDate"  class="form-control">
+      <!-- Botones de rango rápido -->
+      <div class="btn-group control-group" style="display:flex;gap:8px;">
+        <button id="btn-5y"  class="button">Últimos 5 años</button>
+        <button id="btn-10y" class="button">Últimos 10 años</button>
+        <button id="btn-custom" class="button">Fechas personalizadas</button>
+      </div>
 
-  <button id="applyDates" class="btn btn-primary w-100 mt-3">
-    Aplicar
-  </button>
-</div>
+      <!-- Calendarios personalizados (oculto al inicio) -->
+      <div id="custom-date-box" style="display:none" class="mt-2">
+        <label for="startDate">Desde</label>
+        <input type="date" id="startDate" class="form-control">
+        <label for="endDate" class="mt-2">Hasta</label>
+        <input type="date" id="endDate"  class="form-control">
+        <button id="applyDates" class="btn btn-primary w-100 mt-3">Aplicar</button>
+      </div>
 
-<!-- Feedback visual del rango elegido -->
-<p id="rangeLabel" class="small text-muted mt-2"></p>
-      
-      <!-- ==== Selección rápida de rango ==== -->
-<div class="btn-group control-group" style="display:flex; gap:8px;">
-  <button id="btn-5y" class="button">Últimos 5 años</button>
-  <button id="btn-10y" class="button">Últimos 10 años</button>
-  <button id="btn-custom" class="button">Fechas personalizadas</button>
-</div>
+      <!-- Etiqueta del rango elegido -->
+      <p id="rangeLabel" class="small text-muted mt-2"></p>
 
-<!-- ==== Calendarios personalizados (oculto por defecto) ==== -->
-<div id="custom-dates" class="control-group" style="display:none;">
-  <label for="from-date">Desde:</label>
-  <input type="date" id="fromDate">
-  <label for="to-date">Hasta:</label>
-  <input type="date" id="toDate">
-</div>
-
-      <!-- ③ lista dinámica -->
+      <!-- Lista de activos -->
       <div class="control-group">
         <label>Activos Seleccionados:</label>
-        <ul class="selected-assets-list" id="assetList"></ul>
+        <ul id="assetList" class="selected-assets-list"></ul>
         <p id="assetCounter" class="text-sm" style="margin:4px 0;"></p>
       </div>
-      
-<!-- Tasa libre de riesgo -->
-<div class="control-group">
-  <label for="rf-input">Tasa libre de riesgo&nbsp;(anual&nbsp;%):</label>
-  <input type="number"
-         id="rf-input"
-         value="2"
-         min="0"
-         step="0.25">
-</div>
 
-      <!-- ▌ NUEVO : monto a invertir + selector de riesgo ---------------->
-<div class="control-group">
-  <label for="investment-amount">Monto a Invertir (USD):</label>
-  <input type="number" id="investment-amount" value="10000"
-         min="0" step="100">
-</div>
+      <!-- Tasa libre de riesgo -->
+      <div class="control-group">
+        <label for="rf-input">Tasa libre de riesgo&nbsp;(anual&nbsp;%):</label>
+        <input id="rf-input" type="number" value="2" min="0" step="0.25">
+      </div>
 
-<div class="slider-container control-group">
-  <label for="risk-tolerance">
-        Preferencia Riesgo / Retorno
-  </label>
-  <input type="range" id="risk-tolerance" min="0" max="100" value="50">
-  <div class="slider-labels">
-    <span>Conservador</span><span>Agresivo</span>
-  </div>
-</div>
-<!-- ▌ fin bloque nuevo ---------------------------------------------->
+      <!-- Monto y riesgo -->
+      <div class="control-group">
+        <label for="investment-amount">Monto a Invertir (USD):</label>
+        <input id="investment-amount" type="number" value="10000" min="0" step="100">
+      </div>
 
+      <div class="slider-container control-group">
+        <label for="risk-tolerance">Preferencia Riesgo / Retorno</label>
+        <input id="risk-tolerance" type="range" min="0" max="100" value="50">
+        <div class="slider-labels"><span>Conservador</span><span>Agresivo</span></div>
+      </div>
 
-      <!-- ④ botón principal -->
-      <button id="optimizeBtn" class="button success" style="width:100%;">Optimizar Portafolio</button>
+      <!-- Botón optimizar -->
+      <button id="optimizeBtn" class="button success" style="width:100%">Optimizar Portafolio</button>
     </aside>
 
     <main class="main-content">
       <h2 class="section-title">Frontera Eficiente &amp; Composición</h2>
 
-      <!-- ⑤ aquí cae el gráfico -->
-      <div class="chart-placeholder" id="efficient-frontier-chart">
-        Gráfico en preparación…
-      </div>
+      <!-- Gráfico -->
+      <div id="efficient-frontier-chart" class="chart-placeholder">Gráfico en preparación…</div>
 
+      <!-- Resultados -->
       <div class="portfolio-details">
         <h3 class="section-title">Portafolio Máx Sharpe</h3>
         <div class="risk-return-display">
@@ -126,24 +100,25 @@
           <p><strong>Riesgo&nbsp;σ (anual):</strong> <span id="portfolio-risk">–</span></p>
         </div>
         <h4 id="total-investment-display">Distribución óptima de activos:</h4>
-        <ul class="weights-list" id="portfolio-weights"></ul>
+        <ul id="portfolio-weights" class="weights-list"></ul>
       </div>
     </main>
   </div>
 
   <footer>© 2025 Optimizador de Portafolio Pro – solo fines educativos</footer>
-  
-  <!-- Al final del body, tu JS externo -->
-  <script src="js/app.js"></script>
-  <!-- Toast rango de datos -->
-<div id="rangeToast"
-     class="toast align-items-center text-bg-info border-0 position-fixed top-0 end-0 m-3"
-     role="alert" aria-live="assertive" aria-atomic="true">
-  <div class="d-flex">
-    <div id="rangeToastBody" class="toast-body"></div>
-    <button type="button" class="btn-close btn-close-white me-2 m-auto"
-            data-bs-dismiss="toast" aria-label="Close"></button>
+
+  <!-- ===== Toast rango de datos ===== -->
+  <div id="rangeToast"
+       class="toast align-items-center text-bg-info border-0 position-fixed top-0 end-0 m-3"
+       role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div id="rangeToastBody" class="toast-body"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto"
+              data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
   </div>
-</div>
+
+  <!-- Tu script principal -->
+  <script src="js/app.js"></script>
 </body>
 </html>
