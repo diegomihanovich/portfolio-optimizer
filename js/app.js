@@ -221,7 +221,8 @@ function refreshRange() {
 }
 
   // 🔁 tu función original para traer datos y repintar el gráfico
-  fetchAndPlot(start, end);
+efficientFrontier(start, end);
+
 }
 
 // --- listeners ---
