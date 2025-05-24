@@ -9,7 +9,7 @@ const amountInput  = document.getElementById('investment-amount');
 const riskRange    = document.getElementById('risk-tolerance');
 
 let assets = [];                       // tickers en mayúsculas
-let frontierChart = null;              // referencia a Plotly (por si la necesitas)
+let frontierChart = null;              // referencia a Plotly
 
 /* ---------------- UI básica (añadir / quitar activos) -------------- */
 function refreshUI () {
@@ -73,7 +73,7 @@ const pVar = (w,S)=>w.reduce((s,wi,i)=>s+wi*
 
 /* ===== 3. Motor para recálculo según rango ======================== */
 async function efficientFrontier (startISO, endISO) {
-  if (assets.length < 2) return;     // nada que hacer todavía
+  if (assets.length < 2) return;
 
   /* 3.1 descarga paralela */
   const sets = await Promise.all(assets.map(t => fetchHistory(t, startISO, endISO)));
@@ -111,17 +111,22 @@ async function efficientFrontier (startISO, endISO) {
   document.getElementById('efficient-frontier-chart').innerHTML = '';
   frontierChart = Plotly.newPlot('efficient-frontier-chart', [
     { x:sims.map(p=>p.sd*100), y:sims.map(p=>p.r*100),
-      mode:'markers', marker:{size:4,opacity:.4}, name:'Portafolios' },
+      mode:'markers', name:'Portafolios',
+      marker:{size:4,opacity:.25,color:'#2986cc'} },
     { x:[minV.sd*100], y:[minV.r*100], mode:'markers+text',
-      text:['Min Var'], marker:{color:'green',size:10} },
+      text:['Min Var'], name:'Min Var',
+      marker:{color:'green',size:10} },
     { x:[maxS.sd*100], y:[maxS.r*100], mode:'markers+text',
-      text:['Máx Sharpe'], marker:{color:'red',size:10} },
+      text:['Máx Sharpe'], name:'Máx Sharpe',
+      marker:{color:'red',size:10} },
     { x:[sdStar*100], y:[rStar*100], mode:'markers+text',
-      text:['Tu elección'], marker:{color:'gold',size:12,symbol:'star'} }
+      text:['Tu elección'], name:'Tu elección',
+      marker:{color:'gold',size:12,symbol:'star'} }
   ], {
     title:'Frontera eficiente (anualizada)',
     xaxis:{ title:'Riesgo σ (%)' },
-    yaxis:{ title:'Retorno μ (%)' }
+    yaxis:{ title:'Retorno μ (%)' },
+    legend:{orientation:'h', y:-0.25}
   });
 
   /* 3.6 métricas */
@@ -152,8 +157,16 @@ async function efficientFrontier (startISO, endISO) {
   console.log('µ:',mu,'Σ:',Σ,'Tu portfolio:',wStar);
 }
 
+/* ===== 3b. Toast con rango de datos =============================== */
+function showDateRangeToast(startISO, endISO) {
+  const toastEl   = document.getElementById('rangeToast');
+  const toastBody = document.getElementById('rangeToastBody');
+  toastBody.textContent = `Datos de ${startISO} a ${endISO}`;
+  const toast = bootstrap.Toast.getOrCreateInstance(toastEl, { delay:5000 });
+  toast.show();
+}
+
 /* ===== 4. Selector de rango de fechas ============================= */
-// --- refs rápidas a la UI ---
 const ui = {
   btn5      : document.getElementById('btn-5y'),
   btn10     : document.getElementById('btn-10y'),
@@ -164,17 +177,15 @@ const ui = {
   apply     : document.getElementById('applyDates'),
   label     : document.getElementById('rangeLabel')
 };
-// --- estado global mínimo ---
 const state = { years:null, custom:null };
 
 function clearActive() {
   [ui.btn5, ui.btn10, ui.btnCustom].forEach(b=>b.classList.remove('active'));
   ui.box.style.display = 'none';
 }
-
 function refreshRange() {
   const today = new Date();
-  let start, end = today.toISOString().slice(0,10);   // "YYYY-MM-DD"
+  let start, end = today.toISOString().slice(0,10);
 
   if (state.custom) {
     start = state.custom.start;
@@ -186,10 +197,11 @@ function refreshRange() {
     ui.label.textContent = `Últimos ${state.years} años`;
   }
 
-  efficientFrontier(start, end);      // <-- recalcula todo con el rango elegido
+  showDateRangeToast(start, end);       // feedback fase 3
+  efficientFrontier(start, end);        // recálculo con el rango elegido
 }
 
-/* listeners de los 3 botones */
+/* listeners botones */
 ui.btn5.addEventListener('click', ()=>{
   clearActive(); ui.btn5.classList.add('active');
   state.years = 5;  state.custom = null;
@@ -208,3 +220,4 @@ ui.apply.addEventListener('click', ()=>{
   state.custom = { start: ui.start.value, end: ui.end.value };
   refreshRange();
 });
+
