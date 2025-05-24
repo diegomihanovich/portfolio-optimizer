@@ -190,6 +190,35 @@ function refreshRange() {
               .toISOString().slice(0,10);
     ui.label.textContent = `Últimos ${state.years} años`;
   }
+  function rebuild(start, end){
+  Promise.all(assets.map(t => fetchHistory(t, start, end)))
+    .then(sets => {
+
+      /* 3.1 → rendimientos */
+      const toReturns = arr =>
+        arr.slice(1).map((r,i) => (arr[i].Close / r.Close) - 1);
+
+      const freq = document.getElementById('freq-select').value;
+      const ann  = { d:252, w:52, m:12 }[freq] || 252;
+
+      /* 3.2 → alineación */
+      const rets   = sets.map(toReturns);
+      const minLen = Math.min(...rets.map(r => r.length));
+      const aligned = rets.map(r => r.slice(-minLen));
+
+      /* 3.3 → estadísticos */
+      const mean = a => a.reduce((s,v)=>s+v,0)/a.length;
+      const mu   = aligned.map(mean).map(m => m*ann);      // anual
+      const cov  = (x,y,mx,my) =>
+        x.reduce((s,v,i)=> s+(v-mx)*(y[i]-my),0)/(x.length-1);
+
+      const Σ = aligned.map((r,i)=>
+                  aligned.map((c,j)=> cov(r,c, mu[i]/ann, mu[j]/ann)*ann)); // anual
+
+      /* 3.4 → simulación y gráficos (tal como ya está) */
+      efficientFrontier(mu, Σ);   // extrae tu lógica existente
+    });
+}
 
   // 🔁 tu función original para traer datos y repintar el gráfico
   fetchAndPlot(start, end);
