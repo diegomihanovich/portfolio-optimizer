@@ -39,6 +39,23 @@
     <option value="m">Mensual</option>
   </select>
 </div>
+
+      <!-- Rango personalizado (oculto al principio) -->
+<div id="custom-date-box" style="display:none" class="mt-2">
+  <label class="form-label mb-0" for="startDate">Desde</label>
+  <input type="date"  id="startDate" class="form-control">
+
+  <label class="form-label mt-2 mb-0" for="endDate">Hasta</label>
+  <input type="date"  id="endDate"  class="form-control">
+
+  <button id="applyDates" class="btn btn-primary w-100 mt-3">
+    Aplicar
+  </button>
+</div>
+
+<!-- Feedback visual del rango elegido -->
+<p id="rangeLabel" class="small text-muted mt-2"></p>
+      
       <!-- ==== Selección rápida de rango ==== -->
 <div class="btn-group control-group" style="display:flex; gap:8px;">
   <button id="btn-5y" class="button">Últimos 5 años</button>
