@@ -24,8 +24,11 @@
       <!-- Buscar y añadir activos -->
       <div class="control-group">
         <label for="asset-search">Buscar y Seleccionar Activos</label>
-        <input type="text" id="asset-search" placeholder="Ticker o Nombre: Ej: AAPL, MSFT…">
-        <button id="addAssetBtn" class="button secondary" style="margin-top:10px;width:100%">Añadir Activo</button>
+        <input type="text" id="asset-search" placeholder="Ticker o Nombre…">
+        <button id="updateTickersBtn" title="Actualizar lista">🔄</button>
+
+        <!-- lista de sugerencias -->
+<ul id="acList" class="autocomplete"></ul>
       </div>
 
       <!-- Frecuencia -->
@@ -70,7 +73,7 @@
   <label for="rf-input">Tasa libre de riesgo&nbsp;(anual&nbsp;%):</label>
   <div style="display:flex; gap:4px;">
     <input type="number" id="rf-input" value="4.35" min="0" step="0.01"
-           placeholder="4.35">
+           holder="4.35">
     <button id="rf-refresh" class="button secondary">↻</button>
   </div>
 </div>
