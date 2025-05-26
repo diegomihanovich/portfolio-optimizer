@@ -89,6 +89,57 @@ const pMean= (w,mu)=>w.reduce((s,wi,i)=>s+wi*mu[i],0);
 const pVar = (w,S)=>w.reduce((s,wi,i)=>s+wi*
                    w.reduce((ss,wj,j)=>ss+wj*S[i][j],0),0);
 
+/* ===== 2c. Autocompletado ======================================== */
+const TICKERS_URL =
+  'https://raw.githubusercontent.com/diegomihanovich/portfolio-optimizer/main/data/tickers-full.json';
+
+let allTickers = JSON.parse(localStorage.getItem('tickers')||'null');
+const acList   = document.getElementById('acList');
+
+// descarga (solo si no existe en localStorage)
+async function loadTickers(){
+  if(allTickers) return;
+  const res = await fetch(TICKERS_URL).then(r=>r.json());
+  allTickers = res;
+  localStorage.setItem('tickers', JSON.stringify(res));
+}
+
+// botón 🔄
+document.getElementById('updateTickersBtn')
+  .addEventListener('click', async ()=>{
+    localStorage.removeItem('tickers');
+    allTickers = null;
+    await loadTickers();
+    alert('✔ Lista actualizada');
+  });
+
+// al escribir
+inp.addEventListener('input', async ()=>{
+  const q = inp.value.trim().toLowerCase();
+  acList.innerHTML = '';                         // limpia
+  if(q.length<2) return;
+
+  await loadTickers();
+  const matches = allTickers.filter(t =>
+      t.symbol.toLowerCase().includes(q) ||
+      t.name.toLowerCase().includes(q)
+    ).slice(0,10);
+
+  matches.forEach(t=>{
+    const li=document.createElement('li');
+    li.textContent=`${t.symbol} – ${t.name}`;
+    li.addEventListener('click', ()=>{
+      inp.value = t.symbol; addAsset(); acList.innerHTML='';
+    });
+    acList.appendChild(li);
+  });
+});
+
+// cierra la lista si haces clic fuera
+document.addEventListener('click', e=>{
+  if(e.target!==inp) acList.innerHTML='';
+});
+
 /* ===== 3. Motor para recálculo según rango ======================== */
 async function efficientFrontier (startISO, endISO) {
   // necesita al menos 2 activos
