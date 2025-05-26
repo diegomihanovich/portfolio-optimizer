@@ -73,7 +73,10 @@ const pVar = (w,S)=>w.reduce((s,wi,i)=>s+wi*
 
 /* ===== 3. Motor para recálculo según rango ======================== */
 async function efficientFrontier (startISO, endISO) {
-  if (assets.length < 2) return;
+// === obtiene r_f ===
+let rf = parseFloat(document.getElementById('rf-input').value);
+if (isNaN(rf) || rf < 0) rf = 4.35;                   // fallback
+rf /= 100;
 
   /* 3.1 descarga paralela */
   const sets = await Promise.all(assets.map(t => fetchHistory(t, startISO, endISO)));
@@ -92,7 +95,6 @@ async function efficientFrontier (startISO, endISO) {
                cov(r,c, mu[i]/ann, mu[j]/ann) * ann));
 
   /* 3.4 simulación Monte-Carlo */
-  const rf = parseFloat(document.getElementById('rf-input').value)/100 || 0;
   const sims = [];
   for (let k = 0; k < 5000; k++) {
     const w  = randW(mu.length);
