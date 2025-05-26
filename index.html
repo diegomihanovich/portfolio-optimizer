@@ -19,17 +19,25 @@
 
   <header><h1>Optimizador de Portafolio Pro</h1></header>
 
-  <div class="container">
+ <div class="container">
     <aside class="sidebar">
       <!-- Buscar y añadir activos -->
-      <div class="control-group">
+      <div class="control-group  ticker-box"><!-- le daremos pos:relative -->
         <label for="asset-search">Buscar y Seleccionar Activos</label>
-        <input type="text" id="asset-search" placeholder="Ticker o Nombre…">
-        <button id="updateTickersBtn" title="Actualizar lista">🔄</button>
 
-        <!-- lista de sugerencias -->
-<ul id="acList" class="autocomplete"></ul>
+        <!-- input   +   botón 🔄 -->
+        <div class="input-refresh">
+          <input  id="asset-search" type="text"
+                  placeholder="Ticker o Nombre…">
+          <button id="updateTickersBtn"
+                  title="Actualizar lista">🔄</button>
+        </div>
+
+        <!-- lista flotante -->
+        <ul id="acList" class="autocomplete"></ul>
       </div>
+
+      <!-- Frecuencia (igual que antes) -->
 
       <!-- Frecuencia -->
       <div class="control-group">
