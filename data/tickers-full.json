@@ -1,0 +1,6 @@
+[
+  { "symbol": "AAPL", "name": "Apple Inc" },
+  { "symbol": "MSFT", "name": "Microsoft Corp" },
+  { "symbol": "SPY",  "name": "SPDR S&P 500 ETF" },
+  { "symbol": "^SPX", "name": "S&P 500 Index" }
+]
