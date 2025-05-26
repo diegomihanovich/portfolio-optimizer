@@ -26,12 +26,12 @@
         <label for="asset-search">Buscar y Seleccionar Activos</label>
 
         <!-- input   +   botón 🔄 -->
-        <div class="input-refresh">
-          <input  id="asset-search" type="text"
-                  placeholder="Ticker o Nombre…">
-          <button id="updateTickersBtn"
-                  title="Actualizar lista">🔄</button>
-        </div>
+        <!-- CONTENEDOR FLEX  input + botón -->
+<div class="input-refresh">
+  <input type="number" id="rf-input" value="4.35" min="0" step="0.01">
+  <!-- botón de refresco que faltaba -->
+  <button id="rf-refresh" title="Actualizar tasa">🔄</button>
+</div>
 
         <!-- lista flotante -->
         <ul id="acList" class="autocomplete"></ul>
