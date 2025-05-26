@@ -198,3 +198,59 @@ const ui = {
   start     : document.getElementById('startDate'),
   end       : document.getElementById('endDate'),
   apply     : document.getElementById('applyDates'),
+  label     : document.getElementById('rangeLabel')
+};
+const state = { years:null, custom:null };
+
+function clearActive() {
+  [ui.btn5, ui.btn10, ui.btnCustom].forEach(b=>b.classList.remove('active'));
+  ui.box.style.display = 'none';
+}
+function refreshRange() {
+  const today = new Date();
+  let start, end = today.toISOString().slice(0,10);
+
+  if (state.custom) {
+    start = state.custom.start;
+    end   = state.custom.end;
+    ui.label.textContent = De ${start} a ${end};
+  } else {
+    start = new Date(today.setFullYear(today.getFullYear() - state.years))
+              .toISOString().slice(0,10);
+    ui.label.textContent = Últimos ${state.years} años;
+  }
+
+  showDateRangeToast(start, end);       // sòlo feedback visual
+  state.startISO = start;            // ← guardamos rango
+  state.endISO   = end;
+}
+
+// ——— ejecutar cálculos sólo cuando el usuario lo pida ———
+optimizeBtn.addEventListener('click', async () => {
+  // si aún no se eligió rango, usa últimos 5 años por defecto
+  if (!state.startISO) {        // si aún no hay rango elegido
+    state.years = 5;            // valor por defecto
+    refreshRange();            // muestra toast + etiqueta
+  }
+  await efficientFrontier(state.startISO, state.endISO);
+});
+
+/* listeners botones */
+ui.btn5.addEventListener('click', ()=>{
+  clearActive(); ui.btn5.classList.add('active');
+  state.years = 5;  state.custom = null;
+  refreshRange();
+});
+ui.btn10.addEventListener('click', ()=>{
+  clearActive(); ui.btn10.classList.add('active');
+  state.years = 10; state.custom = null;
+  refreshRange();
+});
+ui.btnCustom.addEventListener('click', ()=>{
+  clearActive(); ui.btnCustom.classList.add('active');
+  ui.box.style.display = 'block';
+});
+ui.apply.addEventListener('click', ()=>{
+  state.custom = { start: ui.start.value, end: ui.end.value };
+  refreshRange();
+});
