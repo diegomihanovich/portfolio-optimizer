@@ -213,15 +213,15 @@ function refreshRange() {
   if (state.custom) {
     start = state.custom.start;
     end   = state.custom.end;
-    ui.label.textContent = De ${start} a ${end};
+    ui.label.textContent = `De ${start} a ${end}`;   // ← back-ticks ✅
   } else {
     start = new Date(today.setFullYear(today.getFullYear() - state.years))
               .toISOString().slice(0,10);
-    ui.label.textContent = Últimos ${state.years} años;
+    ui.label.textContent = `Últimos ${state.years} años`; // ← back-ticks ✅
   }
 
-  showDateRangeToast(start, end);       // sòlo feedback visual
-  state.startISO = start;            // ← guardamos rango
+  showDateRangeToast(start, end);
+  state.startISO = start;
   state.endISO   = end;
 }
 
