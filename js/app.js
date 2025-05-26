@@ -23,6 +23,7 @@ function refreshUI () {
   addBtn.disabled      = assets.length >= MAX_ASSETS;
   optimizeBtn.disabled = assets.length < 2;
 }
+
 function addAsset () {
   const t = inp.value.trim().toUpperCase();
   inp.value = '';
@@ -30,6 +31,7 @@ function addAsset () {
   assets.push(t);
   refreshUI();
 }
+
 listUl.addEventListener('click', e => {
   if (e.target.dataset.tkr) {
     assets = assets.filter(x => x !== e.target.dataset.tkr);
@@ -54,6 +56,7 @@ async function fetchHistory(tkr, from, to) {
     return (!from || r.Date >= from) && (!to || r.Date <= to);
   });
 }
+
 function toReturns (rows) {
   const r = [];
   for (let i = 1; i < rows.length; i++) {
@@ -62,6 +65,21 @@ function toReturns (rows) {
   }
   return r;
 }
+
+/* ===== 2b. Botón para actualizar tasa libre de riesgo ============= */
+async function updateRiskFree() {
+  const url = 'https://corsproxy.io/?https://stooq.com/q/l/?s=irx&i=d';
+  try {
+    const csv   = await fetch(url).then(r => r.text());
+    const close = parseFloat(csv.split('\n')[1].split(',')[4]); // fila 2, col. Close
+    if (!isNaN(close))
+      document.getElementById('rf-input').value = (close / 100).toFixed(2);
+  } catch (err) {
+    console.error('No se pudo obtener IRX', err);
+  }
+}
+document.getElementById('rf-refresh').addEventListener('click', updateRiskFree);
+
 /* helpers estadísticos */
 const mean = a => a.reduce((s,v) => s+v,0) / a.length;
 const cov  = (x,y,mx,my) => x.reduce((s,v,i)=>s+(v-mx)*(y[i]-my),0)/(x.length-1);
@@ -73,10 +91,13 @@ const pVar = (w,S)=>w.reduce((s,wi,i)=>s+wi*
 
 /* ===== 3. Motor para recálculo según rango ======================== */
 async function efficientFrontier (startISO, endISO) {
-// === obtiene r_f ===
-let rf = parseFloat(document.getElementById('rf-input').value);
-if (isNaN(rf) || rf < 0) rf = 4.35;                   // fallback
-rf /= 100;
+  // necesita al menos 2 activos
+  if (assets.length < 2) return;
+
+  /* 3.0 tasa libre de riesgo */
+  let rf = parseFloat(document.getElementById('rf-input').value);
+  if (isNaN(rf) || rf < 0) rf = 4.35;   // fallback
+  rf /= 100;
 
   /* 3.1 descarga paralela */
   const sets = await Promise.all(assets.map(t => fetchHistory(t, startISO, endISO)));
@@ -177,60 +198,3 @@ const ui = {
   start     : document.getElementById('startDate'),
   end       : document.getElementById('endDate'),
   apply     : document.getElementById('applyDates'),
-  label     : document.getElementById('rangeLabel')
-};
-const state = { years:null, custom:null };
-
-function clearActive() {
-  [ui.btn5, ui.btn10, ui.btnCustom].forEach(b=>b.classList.remove('active'));
-  ui.box.style.display = 'none';
-}
-function refreshRange() {
-  const today = new Date();
-  let start, end = today.toISOString().slice(0,10);
-
-  if (state.custom) {
-    start = state.custom.start;
-    end   = state.custom.end;
-    ui.label.textContent = `De ${start} a ${end}`;
-  } else {
-    start = new Date(today.setFullYear(today.getFullYear() - state.years))
-              .toISOString().slice(0,10);
-    ui.label.textContent = `Últimos ${state.years} años`;
-  }
-
-  showDateRangeToast(start, end);       // sòlo feedback visual
-  state.startISO = start;            // ← guardamos rango
-  state.endISO   = end;
-}
-
-// ——— ejecutar cálculos sólo cuando el usuario lo pida ———
-optimizeBtn.addEventListener('click', async () => {
-  // si aún no se eligió rango, usa últimos 5 años por defecto
-  if (!state.startISO) {        // si aún no hay rango elegido
-    state.years = 5;            // valor por defecto
-    refreshRange();            // muestra toast + etiqueta
-  }
-  await efficientFrontier(state.startISO, state.endISO);
-});
-
-/* listeners botones */
-ui.btn5.addEventListener('click', ()=>{
-  clearActive(); ui.btn5.classList.add('active');
-  state.years = 5;  state.custom = null;
-  refreshRange();
-});
-ui.btn10.addEventListener('click', ()=>{
-  clearActive(); ui.btn10.classList.add('active');
-  state.years = 10; state.custom = null;
-  refreshRange();
-});
-ui.btnCustom.addEventListener('click', ()=>{
-  clearActive(); ui.btnCustom.classList.add('active');
-  ui.box.style.display = 'block';
-});
-ui.apply.addEventListener('click', ()=>{
-  state.custom = { start: ui.start.value, end: ui.end.value };
-  refreshRange();
-});
-
