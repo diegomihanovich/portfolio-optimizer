@@ -340,3 +340,26 @@
   background:#0d6efd;
   color:#fff;
 }
+/* === autocompletado ============================================= */
+.ticker-box{ position:relative; }
+
+.input-refresh{
+  display:flex; gap:4px;        /* input + botón 🔄 */
+}
+.input-refresh input{ flex:1; }
+
+#updateTickersBtn{
+  padding:0 8px; font-size:1.1rem; cursor:pointer;
+}
+
+.autocomplete{
+  position:absolute; z-index:1000;
+  top:100%; left:0; right:0;    /* ancho = input */
+  background:#fff; border:1px solid #ccc;
+  max-height:160px; overflow-y:auto;
+  list-style:none; margin:0; padding:0;
+}
+.autocomplete li{
+  padding:4px 6px; cursor:pointer;
+}
+.autocomplete li:hover{ background:#eee; }
