@@ -21,40 +21,43 @@
 
  <div class="container">
     <aside class="sidebar">
-      <!-- Buscar y añadir activos -->
-      <div class="control-group  ticker-box"><!-- le daremos pos:relative -->
-        <label for="asset-search">Buscar y Seleccionar Activos</label>
 
-        <!-- input   +   botón 🔄 -->
-        <!-- CONTENEDOR FLEX  input + botón -->
-<div class="input-refresh">
-  <input type="number" id="rf-input" value="4.35" min="0" step="0.01">
-  <!-- botón de refresco que faltaba -->
-  <button id="rf-refresh" title="Actualizar tasa">🔄</button>
-</div>
+  <!-- ░ Buscador de activos con autocompletado ░ -->
+  <div class="control-group" style="position:relative;">
+    <label for="asset-search">Buscar y Seleccionar Activos</label>
 
-        <!-- lista flotante -->
-        <ul id="acList" class="autocomplete"></ul>
-      </div>
+    <input type="text" id="asset-search" placeholder="Ticker o Nombre…" />
 
-      <!-- Frecuencia (igual que antes) -->
+    <!-- botón 🔄 para refrescar tickers -->
+    <button id="updateTickersBtn" title="Actualizar lista">🔄</button>
 
-      <!-- Frecuencia -->
-      <div class="control-group">
-        <label for="freq-select">Frecuencia de datos:</label>
-        <select id="freq-select">
-          <option value="d" selected>Diaria</option>
-          <option value="w">Semanal</option>
-          <option value="m">Mensual</option>
-        </select>
-      </div>
+    <!-- lista flotante -->
+    <ul id="acList" class="autocomplete"></ul>
+  </div>
 
-      <!-- Botones de rango rápido -->
-      <div class="btn-group control-group" style="display:flex;gap:8px;">
-        <button id="btn-5y"  class="button">Últimos 5 años</button>
-        <button id="btn-10y" class="button">Últimos 10 años</button>
-        <button id="btn-custom" class="button">Fechas personalizadas</button>
-      </div>
+  <!-- ░ Tasa libre de riesgo ░ -->
+  <label for="rf-input">Tasa libre de riesgo (anual&nbsp;%):</label>
+  <div class="input-refresh">
+    <input type="number" id="rf-input" value="4.35" min="0" step="0.01" />
+    <button id="rf-refresh" title="Actualizar tasa">🔄</button>
+  </div>
+
+  <!-- Frecuencia de datos -->
+  <div class="control-group">
+    <label for="freq-select">Frecuencia de datos:</label>
+    <select id="freq-select">
+      <option value="d" selected>Diaria</option>
+      <option value="w">Semanal</option>
+      <option value="m">Mensual</option>
+    </select>
+  </div>
+
+  <!-- Botones de rango rápido -->
+  <div class="btn-group control-group" style="display:flex;gap:8px;">
+    <button id="btn-5y"  class="button">Últimos 5 años</button>
+    <button id="btn-10y" class="button">Últimos 10 años</button>
+    <button id="btn-custom" class="button">Fechas personalizadas</button>
+  </div>
 
       <!-- Calendarios personalizados (oculto al inicio) -->
       <div id="custom-date-box" style="display:none" class="mt-2">
