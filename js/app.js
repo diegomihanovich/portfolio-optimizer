@@ -197,9 +197,20 @@ function refreshRange() {
     ui.label.textContent = `Últimos ${state.years} años`;
   }
 
-  showDateRangeToast(start, end);       // feedback fase 3
-  efficientFrontier(start, end);        // recálculo con el rango elegido
+  showDateRangeToast(start, end);       // sòlo feedback visual
+  state.startISO = start;            // ← guardamos rango
+  state.endISO   = end;
 }
+
+// ——— ejecutar cálculos sólo cuando el usuario lo pida ———
+optimizeBtn.addEventListener('click', async () => {
+  // si aún no se eligió rango, usa últimos 5 años por defecto
+  if (!state.startISO) {        // si aún no hay rango elegido
+    state.years = 5;            // valor por defecto
+    refreshRange();            // muestra toast + etiqueta
+  }
+  await efficientFrontier(state.startISO, state.endISO);
+});
 
 /* listeners botones */
 ui.btn5.addEventListener('click', ()=>{
