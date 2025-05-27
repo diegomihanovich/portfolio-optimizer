@@ -106,29 +106,38 @@ const pMean= (w,mu)=> w.reduce((s,wi,i)=> s + wi*mu[i],0);
 const pVar = (w,S)=>  w.reduce((s,wi,i)=> s + wi *
                     w.reduce((ss,wj,j)=> ss + wj*S[i][j],0), 0);
 
-/* ===== 2c. Autocompletado ======================================= */
+// === 2c. Autocompletado ==========================================
 const TICKERS_URL =
-  "https://raw.githubusercontent.com/diegomihanovich/portfolio-optimizer/main/data/tickers-full.json";
+  "https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/main/all/all_tickers.json";
 
-let allTickers = JSON.parse(localStorage.getItem("tickers")||"null");
-const acList   = document.getElementById("acList");
 
-// descarga (solo si no existe en localStorage)
-async function loadTickers(){
-  if(allTickers) return;
-  const res = await fetch(TICKERS_URL).then(r=>r.json());
-  allTickers = res;
-  localStorage.setItem("tickers", JSON.stringify(res));
+// descarga completa (fuerza actualización si force===true)
+async function loadTickers(force = false){
+  if (allTickers && !force) return;            // ya estaba en caché
+  try{
+    const res = await fetch(TICKERS_URL).then(r=>r.json());
+    // normalizamos a {symbol, name}
+    allTickers = res.map(t => ({           // el JSON trae {ticker,name}
+      symbol: t.ticker.toUpperCase(),
+      name  : t.name
+    }));
+    localStorage.setItem("tickers", JSON.stringify(allTickers));
+  }catch(err){
+    console.error("No se pudo bajar la lista de tickers", err);
+    alert("❌ No pude descargar la lista de activos (comprueba tu conexión).");
+  }
 }
 
-// botón 🔄
+
+// botón 🔄  → fuerza nueva descarga
 document.getElementById("updateTickersBtn")
   .addEventListener("click", async ()=>{
     localStorage.removeItem("tickers");
     allTickers = null;
-    await loadTickers();
-    alert("✔ Lista actualizada");
+    await loadTickers(true);               // fuerza = true
+    alert("✔ Lista de activos actualizada");
   });
+
 
 // al escribir
 inp.addEventListener("input", async ()=>{
