@@ -107,67 +107,70 @@ const pVar = (w,S)=>  w.reduce((s,wi,i)=> s + wi *
                     w.reduce((ss,wj,j)=> ss + wj*S[i][j],0), 0);
 
 // === 2c. Autocompletado ==========================================
-const TICKERS_URL =
-  "https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/main/all/all_tickers.txt";
+// URLs con símbolo + nombre por exchange
+const EXCHANGES = ["nasdaq", "nyse", "amex"];
+const BASE_URL  = "https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/main";
 
-/* ----- variables de apoyo para el autocompletado ----- */
 let allTickers = JSON.parse(localStorage.getItem("tickers") || "null");
 const acList   = document.getElementById("acList");
 
-// descarga completa (fuerza actualización si force===true)
+// descarga y fusiona todos los exchanges (fuerza = true salta caché)
 async function loadTickers(force = false){
-  if (allTickers && !force) return;        // ya en caché
+  if (allTickers && !force) return;
 
   try{
-    const txt = await fetch(TICKERS_URL).then(r => r.text());
-    // convierto a [{symbol:'AAPL', name:'AAPL'}, …]
-    allTickers = txt.trim().split(/\s+/).map(s => ({
-      symbol: s.toUpperCase(),
-      name  : s.toUpperCase()           // por ahora sin nombre legible
+    const jsons = await Promise.all(
+      EXCHANGES.map(ex =>
+        fetch(`${BASE_URL}/${ex}/${ex}_full_ticker.json`).then(r=>r.json())
+      )
+    );
+    // unimos y normalizamos → {symbol, name}
+    allTickers = jsons.flat().map(t => ({
+      symbol: t.ticker.toUpperCase(),
+      name  : t.name
     }));
     localStorage.setItem("tickers", JSON.stringify(allTickers));
   }catch(err){
     console.error("No se pudo bajar la lista de tickers", err);
-    alert("❌ No pude descargar la lista de activos (comprueba tu conexión).");
+    alert("❌ No pude descargar la lista de activos (comprueba conexión).");
   }
 }
 
-// botón 🔄  → fuerza nueva descarga
+/* botón 🔄: borra caché y fuerza descarga */
 document.getElementById("updateTickersBtn")
   .addEventListener("click", async ()=>{
     localStorage.removeItem("tickers");
     allTickers = null;
-    await loadTickers(true);               // fuerza = true
+    await loadTickers(true);
     alert("✔ Lista de activos actualizada");
   });
 
-
-// al escribir
+/* al escribir */
 inp.addEventListener("input", async ()=>{
   const q = inp.value.trim().toLowerCase();
   acList.innerHTML = "";
-  if(q.length < 2) return;
+  if (q.length < 2) return;
 
   await loadTickers();
   const matches = allTickers.filter(t =>
       t.symbol.toLowerCase().includes(q) ||
       t.name.toLowerCase().includes(q)
-    ).slice(0,10);
+    ).slice(0,12);                       // muestra hasta 12 resultados
 
   matches.forEach(t=>{
-    const li=document.createElement("li");
+    const li = document.createElement("li");
     li.classList.add("list-group-item","list-group-item-action");
-    li.textContent=`${t.symbol} – ${t.name}`;
-    li.addEventListener("click", ()=>{
-      inp.value = t.symbol; addAsset(); acList.innerHTML="";
+    li.textContent = `${t.symbol} – ${t.name}`;
+    li.addEventListener("click",()=>{
+      inp.value = t.symbol; addAsset(); acList.innerHTML = "";
     });
     acList.appendChild(li);
   });
 });
 
-// cierra la lista si haces clic fuera
+/* clic fuera → cierra la lista */
 document.addEventListener("click", e=>{
-  if(e.target!==inp) acList.innerHTML="";
+  if(e.target !== inp) acList.innerHTML = "";
 });
 
 /* ===== 3. Motor frontera eficiente ============================== */
