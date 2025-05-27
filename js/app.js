@@ -107,28 +107,24 @@ const pVar = (w,S)=>  w.reduce((s,wi,i)=> s + wi *
                     w.reduce((ss,wj,j)=> ss + wj*S[i][j],0), 0);
 
 // === 2c. Autocompletado ==========================================
-// URLs con símbolo + nombre por exchange
-const EXCHANGES = ["nasdaq", "nyse", "amex"];
-const BASE_URL  = "https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/main";
+// Archivo único con {ticker, name} en cada línea
+const TICKERS_URL =
+  "https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/main/all/all_tickers.json";
 
 let allTickers = JSON.parse(localStorage.getItem("tickers") || "null");
 const acList   = document.getElementById("acList");
 
-// descarga y fusiona todos los exchanges (fuerza = true salta caché)
+// descarga y parsea (force = true salta caché)
 async function loadTickers(force = false){
   if (allTickers && !force) return;
 
   try{
-    const jsons = await Promise.all(
-      EXCHANGES.map(ex =>
-        fetch(`${BASE_URL}/${ex}/${ex}_full_ticker.json`).then(r=>r.json())
-      )
-    );
-    // unimos y normalizamos → {symbol, name}
-    allTickers = jsons.flat().map(t => ({
-      symbol: t.ticker.toUpperCase(),
-      name  : t.name
-    }));
+    const raw = await fetch(TICKERS_URL).then(r => r.text());
+    // el archivo NO es un array; convertimos línea-a-línea
+    allTickers = raw.trim().split("\n").map(l => {
+      const { ticker, name } = JSON.parse(l);
+      return { symbol: ticker.toUpperCase(), name };
+    });
     localStorage.setItem("tickers", JSON.stringify(allTickers));
   }catch(err){
     console.error("No se pudo bajar la lista de tickers", err);
