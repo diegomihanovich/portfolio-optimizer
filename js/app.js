@@ -107,30 +107,38 @@ const pVar = (w,S)=>  w.reduce((s,wi,i)=> s + wi *
                     w.reduce((ss,wj,j)=> ss + wj*S[i][j],0), 0);
 
 // === 2c. Autocompletado ==========================================
-// Lista oficial SEC – ≈9 000 símbolos con nombre
+// ① Descargamos la lista oficial de la SEC pasando por un proxy CORS
 const TICKERS_URL =
-  "https://corsproxy.io/?" +                     // evita CORS
+  "https://api.allorigins.win/raw?url=" +
   encodeURIComponent("https://www.sec.gov/files/company_tickers.json");
 
 let allTickers = JSON.parse(localStorage.getItem("tickers") || "null");
 const acList   = document.getElementById("acList");
 
-// descarga y parsea (force = true salta caché)
+// ② Si no está en caché (o force=true) la bajamos
 async function loadTickers(force = false){
-  if (allTickers && !force) return;              // ya en caché
+  if (allTickers && !force) return;
 
   try{
     const dataObj = await fetch(TICKERS_URL).then(r => r.json());
-    /*  dataObj tiene esta pinta:
-          { "0": {ticker:"A",    title:"Agilent Technologies Inc."},
-            "1": {ticker:"AA",   title:"Alcoa Corp"},
-            ... }
-        lo convertimos a un array llano →  [{symbol,name}, …] */
+
     allTickers = Object.values(dataObj).map(o => ({
       symbol : o.ticker.toUpperCase(),
       name   : o.title
     }));
-    // guarda en localStorage para arranques futuros (≈ 400 kB)
+
+    // ③ Inyectamos índices y proxies de bonos que la SEC no trae
+    const EXTRA = [
+      { symbol:"^GSPC", name:"S&P 500 Index" },
+      { symbol:"^IXIC", name:"Nasdaq Composite" },
+      { symbol:"^DJI",  name:"Dow Jones Industrial Avg." },
+      { symbol:"^RUT",  name:"Russell 2000" },
+      { symbol:"IRX",   name:"T-Bill 3 m (proxy)" },
+      { symbol:"TYX",   name:"T-Bond 30 y (proxy)" },
+      { symbol:"IEF",   name:"iShares 7-10y Treasury ETF" }
+    ];
+    allTickers = [...EXTRA, ...allTickers];
+
     localStorage.setItem("tickers", JSON.stringify(allTickers));
 
   }catch(err){
@@ -139,16 +147,16 @@ async function loadTickers(force = false){
   }
 }
 
-/* botón 🔄: borra caché y fuerza descarga */
+/* botón 🔄 : borra caché y fuerza descarga */
 document.getElementById("updateTickersBtn")
   .addEventListener("click", async ()=>{
     localStorage.removeItem("tickers");
     allTickers = null;
-    await loadTickers(true);                     // fuerza = true
+    await loadTickers(true);
     alert("✔ Lista de activos actualizada");
   });
 
-/* al escribir */
+/* al escribir en el buscador */
 inp.addEventListener("input", async ()=>{
   const q = inp.value.trim().toLowerCase();
   acList.innerHTML = "";
@@ -158,16 +166,14 @@ inp.addEventListener("input", async ()=>{
   const matches = allTickers.filter(t =>
       t.symbol.toLowerCase().includes(q) ||
       t.name  .toLowerCase().includes(q)
-    ).slice(0,12);                              // máximo 12 sugerencias
+    ).slice(0,12);
 
   matches.forEach(t=>{
     const li = document.createElement("li");
     li.classList.add("list-group-item","list-group-item-action");
     li.textContent = `${t.symbol} – ${t.name}`;
     li.addEventListener("click",()=>{
-      inp.value = t.symbol;
-      addAsset();
-      acList.innerHTML = "";
+      inp.value = t.symbol; addAsset(); acList.innerHTML = "";
     });
     acList.appendChild(li);
   });
