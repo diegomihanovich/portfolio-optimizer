@@ -107,28 +107,35 @@ const pVar = (w,S)=>  w.reduce((s,wi,i)=> s + wi *
                     w.reduce((ss,wj,j)=> ss + wj*S[i][j],0), 0);
 
 // === 2c. Autocompletado ==========================================
-// Archivo único con {ticker, name} en cada línea
+// Lista oficial SEC – ≈9 000 símbolos con nombre
 const TICKERS_URL =
-  "https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/main/all/all_tickers.json";
+  "https://corsproxy.io/?" +                     // evita CORS
+  encodeURIComponent("https://www.sec.gov/files/company_tickers.json");
 
 let allTickers = JSON.parse(localStorage.getItem("tickers") || "null");
 const acList   = document.getElementById("acList");
 
 // descarga y parsea (force = true salta caché)
 async function loadTickers(force = false){
-  if (allTickers && !force) return;
+  if (allTickers && !force) return;              // ya en caché
 
   try{
-    const raw = await fetch(TICKERS_URL).then(r => r.text());
-    // el archivo NO es un array; convertimos línea-a-línea
-    allTickers = raw.trim().split("\n").map(l => {
-      const { ticker, name } = JSON.parse(l);
-      return { symbol: ticker.toUpperCase(), name };
-    });
+    const dataObj = await fetch(TICKERS_URL).then(r => r.json());
+    /*  dataObj tiene esta pinta:
+          { "0": {ticker:"A",    title:"Agilent Technologies Inc."},
+            "1": {ticker:"AA",   title:"Alcoa Corp"},
+            ... }
+        lo convertimos a un array llano →  [{symbol,name}, …] */
+    allTickers = Object.values(dataObj).map(o => ({
+      symbol : o.ticker.toUpperCase(),
+      name   : o.title
+    }));
+    // guarda en localStorage para arranques futuros (≈ 400 kB)
     localStorage.setItem("tickers", JSON.stringify(allTickers));
+
   }catch(err){
     console.error("No se pudo bajar la lista de tickers", err);
-    alert("❌ No pude descargar la lista de activos (comprueba conexión).");
+    alert("❌ No pude descargar la lista de activos (comprueba tu conexión).");
   }
 }
 
@@ -137,7 +144,7 @@ document.getElementById("updateTickersBtn")
   .addEventListener("click", async ()=>{
     localStorage.removeItem("tickers");
     allTickers = null;
-    await loadTickers(true);
+    await loadTickers(true);                     // fuerza = true
     alert("✔ Lista de activos actualizada");
   });
 
@@ -150,15 +157,17 @@ inp.addEventListener("input", async ()=>{
   await loadTickers();
   const matches = allTickers.filter(t =>
       t.symbol.toLowerCase().includes(q) ||
-      t.name.toLowerCase().includes(q)
-    ).slice(0,12);                       // muestra hasta 12 resultados
+      t.name  .toLowerCase().includes(q)
+    ).slice(0,12);                              // máximo 12 sugerencias
 
   matches.forEach(t=>{
     const li = document.createElement("li");
     li.classList.add("list-group-item","list-group-item-action");
     li.textContent = `${t.symbol} – ${t.name}`;
     li.addEventListener("click",()=>{
-      inp.value = t.symbol; addAsset(); acList.innerHTML = "";
+      inp.value = t.symbol;
+      addAsset();
+      acList.innerHTML = "";
     });
     acList.appendChild(li);
   });
@@ -166,8 +175,9 @@ inp.addEventListener("input", async ()=>{
 
 /* clic fuera → cierra la lista */
 document.addEventListener("click", e=>{
-  if(e.target !== inp) acList.innerHTML = "";
+  if (e.target !== inp) acList.innerHTML = "";
 });
+
 
 /* ===== 3. Motor frontera eficiente ============================== */
 async function efficientFrontier (startISO, endISO) {
