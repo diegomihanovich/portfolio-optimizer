@@ -108,7 +108,7 @@ const pVar = (w,S)=>  w.reduce((s,wi,i)=> s + wi *
 
 // === 2c. Autocompletado ==========================================
 const TICKERS_URL =
-  "https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/main/all/all_tickers.json";
+  "https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/main/all/all_tickers.txt";
 
 /* ----- variables de apoyo para el autocompletado ----- */
 let allTickers = JSON.parse(localStorage.getItem("tickers") || "null");
@@ -116,13 +116,14 @@ const acList   = document.getElementById("acList");
 
 // descarga completa (fuerza actualización si force===true)
 async function loadTickers(force = false){
-  if (allTickers && !force) return;            // ya estaba en caché
+  if (allTickers && !force) return;        // ya en caché
+
   try{
-    const res = await fetch(TICKERS_URL).then(r=>r.json());
-    // normalizamos a {symbol, name}
-    allTickers = res.map(t => ({           // el JSON trae {ticker,name}
-      symbol: t.ticker.toUpperCase(),
-      name  : t.name
+    const txt = await fetch(TICKERS_URL).then(r => r.text());
+    // convierto a [{symbol:'AAPL', name:'AAPL'}, …]
+    allTickers = txt.trim().split(/\s+/).map(s => ({
+      symbol: s.toUpperCase(),
+      name  : s.toUpperCase()           // por ahora sin nombre legible
     }));
     localStorage.setItem("tickers", JSON.stringify(allTickers));
   }catch(err){
@@ -130,7 +131,6 @@ async function loadTickers(force = false){
     alert("❌ No pude descargar la lista de activos (comprueba tu conexión).");
   }
 }
-
 
 // botón 🔄  → fuerza nueva descarga
 document.getElementById("updateTickersBtn")
