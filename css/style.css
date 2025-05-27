@@ -364,3 +364,59 @@
 }
 .autocomplete li:hover{ background:#eee; }
 
+/* === Bootstrap overrides ===================================== */
+/* Botones: conserva tu paleta de colores ---------------------- */
+.btn-primary, .btn-primary:visited {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color:#fff;
+}
+.btn-primary:hover     { background:#0069d9; border-color:#0062cc; }
+.btn-primary:active,
+.btn-primary:focus     { box-shadow: 0 0 0 0.2rem rgba(0,123,255,.4); }
+
+.btn-outline-secondary,
+.btn-outline-secondary:hover,
+.btn-outline-secondary:focus {
+  color:#fff;                    /* texto blanco en el 🔄 y ✕ */
+  background: var(--secondary-color);
+  border-color: var(--secondary-color);
+}
+
+/* Lista de activos seleccionados ------------------------------ */
+#assetList.list-group{
+  border:1px solid var(--border-color);
+  border-radius:var(--border-radius);
+  max-height:200px;
+  overflow-y:auto;
+}
+#assetList .list-group-item{
+  font-size:.9em;
+  padding:.55rem .9rem;
+  border-bottom:1px solid var(--border-color);
+}
+#assetList .list-group-item:last-child{ border-bottom:none; }
+
+/* Botón ✕ dentro de la lista */
+#assetList button{
+  padding:0 .5rem;
+  line-height:1;
+  font-size:.9rem;
+}
+
+/* Toast Bootstrap: mantenemos tu fuente y radio ---------------- */
+.toast{
+  border-radius:var(--border-radius);
+  font-size:.9rem;
+}
+
+/* Plotly: asegura alto y que ocupe todo el ancho --------------- */
+#efficient-frontier-chart{
+  height:420px;      /* fija alto cómodo */
+  width:100%!important;
+}
+.plotly-graph-div{ height:100%!important; }
+
+/* Si prefieres tu antiguo look para cualquier .button  --------- */
+/* simplemente mapea .button => .btn                             */
+.button{ @apply --no-op; } /* comentarlo o borrarlo si ya no lo usas */
