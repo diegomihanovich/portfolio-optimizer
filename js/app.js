@@ -110,6 +110,9 @@ const pVar = (w,S)=>  w.reduce((s,wi,i)=> s + wi *
 const TICKERS_URL =
   "https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/main/all/all_tickers.json";
 
+/* ----- variables de apoyo para el autocompletado ----- */
+let allTickers = JSON.parse(localStorage.getItem("tickers") || "null");
+const acList   = document.getElementById("acList");
 
 // descarga completa (fuerza actualización si force===true)
 async function loadTickers(force = false){
