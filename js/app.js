@@ -98,57 +98,116 @@ const toReturns = rows => rows.slice(1).map((r,i)=> {
 }).filter(v=>v!=null);
 
 /* ===== 2b. Botón actualizar tasa libre de riesgo ================= */
-async function updateRiskFree () {
+async function updateRiskFree() {
 
-  const rfInput = document.getElementById("rf-input");
-  rfInput.value = "…";                 // pequeño indicador de “cargando”
-
-  /* ---------- helper proxy (gratis) ------------------------------ */
+  // ---------- helper proxy (CORREGIDO) ------------------------------
+  // Se usan backticks (`) para la plantilla de cadena de texto
   const viaProxy = url =>
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+    `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
 
-  /* ---- 1) Treasury Fiscal Data – 13-Week Bill ------------------- */
+  /* ---- 1) Yahoo Finance ^IRX (JSON) ---- */
   try {
-    const tURL =
-      "https://api.fiscaldata.treasury.gov/services/api/" +
-      "fiscal_service/v2/accounting/od/daily_treasury_bill_rates" +
-      "?fields=record_date,bill_rate,security_desc" +
-      "&filter=security_desc:eq:13-Week%20Bill%20Secondary%20Market" +
-      "&sort=-record_date&page[size]=1";
+    console.log("Intentando Yahoo Finance...");
+    const yResponse = await fetch(
+      viaProxy("https://query1.finance.yahoo.com/v7/finance/quote?symbols=^IRX")
+    );
 
-    const { data } = await fetch(viaProxy(tURL)).then(r => r.json());
-    const rate    = parseFloat(data?.[0]?.bill_rate);   // viene como “4.36”
-
-    if (!isNaN(rate)) {
-      rfInput.value = rate.toFixed(2);   // mostramos 4.36 %
-      return;                            // ✔ éxito — salimos
+    if (!yResponse.ok) {
+      // Si la respuesta del proxy o del API no es exitosa, registra el error y lanza uno para ir al catch.
+      console.error("Error fetching from Yahoo (proxy/API response not ok):", yResponse.status, await yResponse.text());
+      throw new Error("Yahoo fetch failed (server response not ok)");
     }
-  } catch (_) { /* pasamos al fallback */ }
 
-  /* ---- 2) Stooq ^IRX.US (CSV) ---------------------------------- */
+    const yRaw = await yResponse.json(); // Esto es lo que allorigins devuelve, que tiene 'contents'
+    
+    if (!yRaw.contents) {
+        console.error("Error fetching from Yahoo: 'contents' field missing in proxy response.", yRaw);
+        throw new Error("Yahoo fetch failed ('contents' missing)");
+    }
+
+    const yData = JSON.parse(yRaw.contents); // 'contents' tiene el JSON string de Yahoo
+    const yRate = yData.quoteResponse.result?.[0]?.regularMarketPrice;
+
+    if (yRate !== undefined && !isNaN(yRate)) { // Comprobar que yRate no sea undefined antes de !isNaN
+      document.getElementById("rf-input").value = parseFloat(yRate).toFixed(2); // Asegurar que yRate es número antes de toFixed
+      console.log("Tasa de Yahoo Finance actualizada:", yRate.toFixed(2));
+      return; // Éxito → salimos
+    } else {
+      console.warn("Tasa de Yahoo Finance no disponible o inválida:", yRate);
+      throw new Error("Yahoo rate not available or invalid"); // Forzar paso al siguiente proveedor
+    }
+  } catch (error) {
+    console.error("Falló el intento con Yahoo Finance:", error);
+    /* pasamos al fallback */
+  }
+
+  /* ---- 2) Stooq irx (CSV) --------------- */
   try {
-    const csv   = await fetch(
-      viaProxy("https://stooq.com/q/l/?s=%5EIRX.US&i=d")
-    ).then(r => r.text());
+    console.log("Intentando Stooq...");
+    const sResponse = await fetch(viaProxy(
+      "https://stooq.com/q/l/?s=irx&i=d"
+    ));
 
-    const close = parseFloat(csv.split("\n")[1].split(",")[4]); // 2ª línea, col 5
-    if (!isNaN(close)) {
-      rfInput.value = (close / 100).toFixed(2);
-      return;                            // ✔ éxito — salimos
+    if (!sResponse.ok) {
+      console.error("Error fetching from Stooq (proxy/API response not ok):", sResponse.status, await sResponse.text());
+      throw new Error("Stooq fetch failed (server response not ok)");
     }
-  } catch (_) { /* seguimos al aviso final */ }
+    
+    const sRaw = await sResponse.json();
 
-  /* ---- 3) Aviso de error --------------------------------------- */
-  rfInput.value = "";
-  alert("❌ No pude actualizar la tasa libre de riesgo.\nIntenta de nuevo más tarde.");
+    if (!sRaw.contents) {
+        console.error("Error fetching from Stooq: 'contents' field missing in proxy response.", sRaw);
+        throw new Error("Stooq fetch failed ('contents' missing)");
+    }
+
+    const csv = sRaw.contents;
+    const lines = csv.split("\n");
+    if (lines.length > 1) {
+      const dataFields = lines[1].split(",");
+      // CORREGIDO: El índice para 'Close' es usualmente 6, no 4 (que sería 'High')
+      // Symbol,Date,Time,Open,High,Low,Close,Volume
+      //   0    1    2    3    4    5    6      7
+      if (dataFields.length > 6) {
+        const close = parseFloat(dataFields[6]);
+
+        if (!isNaN(close)) {
+          document.getElementById("rf-input").value = (close).toFixed(2); // Stooq ya da el valor directo, no dividir por 100 a menos que sea un porcentaje como 5 para 5%
+          console.log("Tasa de Stooq actualizada:", (close).toFixed(2));
+          return; // Éxito → salimos
+        } else {
+          console.warn("Valor de Stooq no es un número:", dataFields[6]);
+          throw new Error("Stooq value is NaN");
+        }
+      } else {
+        console.warn("No hay suficientes campos en los datos de Stooq CSV:", dataFields);
+        throw new Error("Not enough fields in Stooq CSV data");
+      }
+    } else {
+      console.warn("Formato de CSV de Stooq inesperado (pocas líneas):", csv);
+      throw new Error("Unexpected Stooq CSV format (too few lines)");
+    }
+  } catch (error) {
+    console.error("Falló el intento con Stooq:", error);
+    /* seguimos al aviso final */
+  }
+
+  /* ---- 3) Aviso de error --------------- */
+  alert("❌ No pude actualizar la tasa libre de riesgo.\n" +
+    "   Intenta de nuevo más tarde.");
   console.error("updateRiskFree(): ambas fuentes fallaron.");
 }
 
 /* Ejecutar al cargar la página y cuando se pulse ↻ */
-updateRiskFree();
-document.getElementById("rf-refresh")
-        .addEventListener("click", updateRiskFree);
-
+// Es buena idea esperar a que el DOM esté cargado para ejecutar updateRiskFree y añadir listeners
+document.addEventListener('DOMContentLoaded', () => {
+  updateRiskFree();
+  const refreshButton = document.getElementById("rf-refresh");
+  if (refreshButton) {
+    refreshButton.addEventListener("click", updateRiskFree);
+  } else {
+    console.error("No se encontró el botón con ID 'rf-refresh'.");
+  }
+});
 
 
 /* helpers estadísticos */
