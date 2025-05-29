@@ -54,8 +54,22 @@ listUl.addEventListener("click", e => {
   }
 });
 addBtn.addEventListener("click", addAsset);
-inp.addEventListener("keydown", e => { if (e.key === "Enter") addAsset(); });
-refreshUI();
+// justo donde defines el listener de tecla en el input
+inp.addEventListener("keydown", e => {
+  if (e.key !== "Enter") return;   // solo nos importa Enter
+
+  e.preventDefault();              // evitamos cualquier otro “Enter” por defecto
+
+  // 1️⃣ Si hay sugerencias, seleccionamos la primera automáticamente
+  const primera = acList.querySelector("li");
+  if (primera) {
+    primera.click();               // esto pone el símbolo en el input y vacía la lista
+    return;                        // y salimos
+  }
+
+  // 2️⃣ Si NO hay sugerencias, añadimos lo que escribió el usuario
+  addAsset();
+});
 
 /* ===== 2. Fetch histórico Stooq + filtrado ======================= */
 async function fetchHistory(tkr, from, to) {
