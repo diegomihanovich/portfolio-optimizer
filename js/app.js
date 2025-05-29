@@ -98,46 +98,49 @@ const toReturns = rows => rows.slice(1).map((r,i)=> {
 }).filter(v=>v!=null);
 
 /* ===== 2b. Botón actualizar tasa libre de riesgo ================= */
-async function updateRiskFree() {
+async function updateRiskFree () {
 
-  // ---------- helper proxy ----------------------------------------
+  const rfInput = document.getElementById("rf-input");
+  rfInput.value = "…";                 // pequeño indicador de “cargando”
+
+  /* ---------- helper proxy (gratis) ------------------------------ */
   const viaProxy = url =>
-    `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
 
- /* ---- 1) Yahoo Finance ^IRX (JSON) ---- */
-try {
-  const yRaw = await fetch(
-      viaProxy("https://query1.finance.yahoo.com/v7/finance/quote?symbols=^IRX")
-    ).then(r => r.json());
-
-  const yData = JSON.parse(yRaw.contents);
-  const yRate = yData.quoteResponse.result?.[0]?.regularMarketPrice;
-
-  if (!isNaN(yRate)) {
-    document.getElementById("rf-input").value = yRate.toFixed(2);
-    return;                                 // Éxito → salimos
-  }
-} catch (_) { /* pasamos al fallback */ }
-
-
-  /* ---- 2) Stooq irx (CSV) --------------- */
+  /* ---- 1) Treasury Fiscal Data – 13-Week Bill ------------------- */
   try {
-    const sRaw   = await fetch(viaProxy(
-        "https://stooq.com/q/l/?s=irx&i=d")
-      ).then(r => r.json());
+    const tURL =
+      "https://api.fiscaldata.treasury.gov/services/api/" +
+      "fiscal_service/v2/accounting/od/daily_treasury_bill_rates" +
+      "?fields=record_date,bill_rate,security_desc" +
+      "&filter=security_desc:eq:13-Week%20Bill%20Secondary%20Market" +
+      "&sort=-record_date&page[size]=1";
 
-    const csv    = sRaw.contents;
-    const close  = parseFloat(csv.split("\n")[1].split(",")[4]); // 2ª línea, col 5
+    const { data } = await fetch(viaProxy(tURL)).then(r => r.json());
+    const rate    = parseFloat(data?.[0]?.bill_rate);   // viene como “4.36”
 
+    if (!isNaN(rate)) {
+      rfInput.value = rate.toFixed(2);   // mostramos 4.36 %
+      return;                            // ✔ éxito — salimos
+    }
+  } catch (_) { /* pasamos al fallback */ }
+
+  /* ---- 2) Stooq ^IRX.US (CSV) ---------------------------------- */
+  try {
+    const csv   = await fetch(
+      viaProxy("https://stooq.com/q/l/?s=%5EIRX.US&i=d")
+    ).then(r => r.text());
+
+    const close = parseFloat(csv.split("\n")[1].split(",")[4]); // 2ª línea, col 5
     if (!isNaN(close)) {
-      document.getElementById("rf-input").value = (close / 100).toFixed(2);
-      return;                                   // Éxito → salimos
+      rfInput.value = (close / 100).toFixed(2);
+      return;                            // ✔ éxito — salimos
     }
   } catch (_) { /* seguimos al aviso final */ }
 
-  /* ---- 3) Aviso de error --------------- */
-  alert("❌ No pude actualizar la tasa libre de riesgo.\n" +
-        "   Intenta de nuevo más tarde.");
+  /* ---- 3) Aviso de error --------------------------------------- */
+  rfInput.value = "";
+  alert("❌ No pude actualizar la tasa libre de riesgo.\nIntenta de nuevo más tarde.");
   console.error("updateRiskFree(): ambas fuentes fallaron.");
 }
 
@@ -145,6 +148,7 @@ try {
 updateRiskFree();
 document.getElementById("rf-refresh")
         .addEventListener("click", updateRiskFree);
+
 
 
 /* helpers estadísticos */
