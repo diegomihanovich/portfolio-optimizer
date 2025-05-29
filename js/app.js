@@ -99,29 +99,46 @@ const toReturns = rows => rows.slice(1).map((r,i)=> {
 
 /* ===== 2b. Botón actualizar tasa libre de riesgo ================= */
 async function updateRiskFree() {
-  // URL de Yahoo Finance para ^IRX (yield 3-meses)
-  const yURL = "https://query1.finance.yahoo.com/v7/finance/quote?symbols=%5EIRX";
-  // Pasamos por allorigins para evitar CORS
-  const url  = "https://api.allorigins.win/raw?url=" + encodeURIComponent(yURL);
+
+  // -------- 1) Intento Yahoo Finance ---------------------------------
+  const yURL = "https://api.allorigins.win/raw?" +
+               encodeURIComponent("https://query1.finance.yahoo.com/v7/finance/quote?symbols=%5EIRX");
 
   try {
-    const data = await fetch(url).then(r => r.json());
-    const price = data.quoteResponse.result[0].regularMarketPrice; // p.ej. 4.87
-    if (!isNaN(price)) {
-      document.getElementById("rf-input").value = price.toFixed(2);
-    } else {
-      throw new Error("Valor NaN");
+    const yData = await fetch(yURL).then(r => r.json());
+    const arr   = yData?.quoteResponse?.result;
+    const yRate = arr && arr.length ? arr[0].regularMarketPrice : NaN;
+
+    if (!isNaN(yRate)) {
+      document.getElementById("rf-input").value = yRate.toFixed(2);
+      return;                                     // éxito → salimos
     }
-  } catch (err) {
-    console.error("No se pudo obtener IRX", err);
-    alert("❌ No pude actualizar la tasa libre de riesgo. Intenta más tarde.");
-  }
+  } catch(e){ /* ignoramos, pasamos a Stooq */ }
+
+  // -------- 2) Fallback Stooq ----------------------------------------
+  const sURL = "https://api.allorigins.win/raw?" +
+               encodeURIComponent("https://stooq.com/q/l/?s=irx&i=d");
+
+  try {
+    const csv   = await fetch(sURL).then(r => r.text());
+    // segunda línea, quinta columna = Close
+    const close = parseFloat(csv.split("\n")[1].split(",")[4]);
+    if (!isNaN(close)) {
+      document.getElementById("rf-input").value = (close / 100).toFixed(2);
+      return;                                     // éxito → salimos
+    }
+  } catch(e){ /* seguimos al aviso final */ }
+
+  // -------- 3) Aviso de error ----------------------------------------
+  alert("❌ No pude actualizar la tasa libre de riesgo.\n" +
+        "   Intenta de nuevo más tarde.");
+  console.error("updateRiskFree(): ambas fuentes fallaron.");
 }
 
-// ▶ Llamamos una vez al cargar la página
+// ➜ Ejecutar al abrir la página
 updateRiskFree();
 
-// ▶ Y también al pulsar el botón ↻
+// ➜ Ejecutar cuando el usuario pulse ↻
 document.getElementById("rf-refresh").addEventListener("click", updateRiskFree);
 
 
