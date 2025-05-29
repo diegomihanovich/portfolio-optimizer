@@ -100,46 +100,50 @@ const toReturns = rows => rows.slice(1).map((r,i)=> {
 /* ===== 2b. Botón actualizar tasa libre de riesgo ================= */
 async function updateRiskFree() {
 
-  // -------- 1) Intento Yahoo Finance ---------------------------------
-  const yURL = "https://api.allorigins.win/raw?" +
-               encodeURIComponent("https://query1.finance.yahoo.com/v7/finance/quote?symbols=%5EIRX");
+  // ---------- helper proxy ----------------------------------------
+  const viaProxy = url =>
+    `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
 
+  /* ---- 1) Yahoo Finance ^IRX (JSON) ---- */
   try {
-    const yData = await fetch(yURL).then(r => r.json());
-    const arr   = yData?.quoteResponse?.result;
-    const yRate = arr && arr.length ? arr[0].regularMarketPrice : NaN;
+    const yRaw   = await fetch(viaProxy(
+        "https://query1.finance.yahoo.com/v7/finance/quote?symbols=%5EIRX")
+      ).then(r => r.json());
+
+    const yData  = JSON.parse(yRaw.contents);
+    const yRate  = yData.quoteResponse.result?.[0]?.regularMarketPrice;
 
     if (!isNaN(yRate)) {
       document.getElementById("rf-input").value = yRate.toFixed(2);
-      return;                                     // éxito → salimos
+      return;                                   // Éxito → salimos
     }
-  } catch(e){ /* ignoramos, pasamos a Stooq */ }
+  } catch (_) { /* pasamos al fallback */ }
 
-  // -------- 2) Fallback Stooq ----------------------------------------
-  const sURL = "https://api.allorigins.win/raw?" +
-               encodeURIComponent("https://stooq.com/q/l/?s=irx&i=d");
-
+  /* ---- 2) Stooq irx (CSV) --------------- */
   try {
-    const csv   = await fetch(sURL).then(r => r.text());
-    // segunda línea, quinta columna = Close
-    const close = parseFloat(csv.split("\n")[1].split(",")[4]);
+    const sRaw   = await fetch(viaProxy(
+        "https://stooq.com/q/l/?s=irx&i=d")
+      ).then(r => r.json());
+
+    const csv    = sRaw.contents;
+    const close  = parseFloat(csv.split("\n")[1].split(",")[4]); // 2ª línea, col 5
+
     if (!isNaN(close)) {
       document.getElementById("rf-input").value = (close / 100).toFixed(2);
-      return;                                     // éxito → salimos
+      return;                                   // Éxito → salimos
     }
-  } catch(e){ /* seguimos al aviso final */ }
+  } catch (_) { /* seguimos al aviso final */ }
 
-  // -------- 3) Aviso de error ----------------------------------------
+  /* ---- 3) Aviso de error --------------- */
   alert("❌ No pude actualizar la tasa libre de riesgo.\n" +
         "   Intenta de nuevo más tarde.");
   console.error("updateRiskFree(): ambas fuentes fallaron.");
 }
 
-// ➜ Ejecutar al abrir la página
+/* Ejecutar al cargar la página y cuando se pulse ↻ */
 updateRiskFree();
-
-// ➜ Ejecutar cuando el usuario pulse ↻
-document.getElementById("rf-refresh").addEventListener("click", updateRiskFree);
+document.getElementById("rf-refresh")
+        .addEventListener("click", updateRiskFree);
 
 
 /* helpers estadísticos */
