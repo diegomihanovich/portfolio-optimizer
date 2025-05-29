@@ -200,7 +200,10 @@ async function efficientFrontier (startISO, endISO) {
   const rets   = sets.map(toReturns);
   const minLen = Math.min(...rets.map(r => r.length));
   if (minLen < 2) {
-    alert("❌ Alguno de los activos no tiene suficiente historial");
+   alert(
+      "❌ Alguno de los activos no tiene suficiente historial o no existe.\n" +
+      "   Por favor, revisa que el ticker o nombre estén bien escritos."
+    );
     return;
   }
   const aligned = rets.map(r => r.slice(-minLen));
