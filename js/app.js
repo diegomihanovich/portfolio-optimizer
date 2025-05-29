@@ -99,17 +99,31 @@ const toReturns = rows => rows.slice(1).map((r,i)=> {
 
 /* ===== 2b. Botón actualizar tasa libre de riesgo ================= */
 async function updateRiskFree() {
-  const url = "https://corsproxy.io/?https://stooq.com/q/l/?s=irx&i=d";
+  // URL de Yahoo Finance para ^IRX (yield 3-meses)
+  const yURL = "https://query1.finance.yahoo.com/v7/finance/quote?symbols=%5EIRX";
+  // Pasamos por allorigins para evitar CORS
+  const url  = "https://api.allorigins.win/raw?url=" + encodeURIComponent(yURL);
+
   try {
-    const csv   = await fetch(url).then(r => r.text());
-    const close = parseFloat(csv.split("\n")[1].split(",")[4]); // fila 2, Close
-    if (!isNaN(close))
-      document.getElementById("rf-input").value = (close / 100).toFixed(2);
+    const data = await fetch(url).then(r => r.json());
+    const price = data.quoteResponse.result[0].regularMarketPrice; // p.ej. 4.87
+    if (!isNaN(price)) {
+      document.getElementById("rf-input").value = price.toFixed(2);
+    } else {
+      throw new Error("Valor NaN");
+    }
   } catch (err) {
     console.error("No se pudo obtener IRX", err);
+    alert("❌ No pude actualizar la tasa libre de riesgo. Intenta más tarde.");
   }
 }
+
+// ▶ Llamamos una vez al cargar la página
+updateRiskFree();
+
+// ▶ Y también al pulsar el botón ↻
 document.getElementById("rf-refresh").addEventListener("click", updateRiskFree);
+
 
 /* helpers estadísticos */
 const mean = a => a.reduce((s,v) => s+v,0) / a.length;
