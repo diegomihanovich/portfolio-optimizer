@@ -107,10 +107,9 @@ const pVar = (w,S)=>  w.reduce((s,wi,i)=> s + wi *
                     w.reduce((ss,wj,j)=> ss + wj*S[i][j],0), 0);
 
 // === 2c. Autocompletado ==========================================
-// ① Descargamos la lista oficial de la SEC pasando por un proxy CORS
+// Usamos la copia local del JSON con símbolo + nombre
 const TICKERS_URL =
-  "https://api.allorigins.win/raw?url=" +
-  encodeURIComponent("https://www.sec.gov/files/company_tickers.json");
+  "https://raw.githubusercontent.com/diegomihanovich/portfolio-optimizer/main/data/company_tickers.json";
 
 let allTickers = JSON.parse(localStorage.getItem("tickers") || "null");
 const acList   = document.getElementById("acList");
