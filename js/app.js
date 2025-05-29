@@ -160,15 +160,6 @@ async function loadTickers(force = false){
   }
 }
 
-/* botón 🔄 : borra caché y fuerza descarga */
-document.getElementById("updateTickersBtn")
-  .addEventListener("click", async ()=>{
-    localStorage.removeItem("tickers");
-    allTickers = null;
-    await loadTickers(true);
-    alert("✔ Lista de activos actualizada");
-  });
-
 /* al escribir en el buscador */
 inp.addEventListener("input", async ()=>{
   const q = inp.value.trim().toLowerCase();
