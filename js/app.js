@@ -104,20 +104,21 @@ async function updateRiskFree() {
   const viaProxy = url =>
     `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
 
-  /* ---- 1) Yahoo Finance ^IRX (JSON) ---- */
-  try {
-    const yRaw   = await fetch(viaProxy(
-        "https://query1.finance.yahoo.com/v7/finance/quote?symbols=%5EIRX")
-      ).then(r => r.json());
+ /* ---- 1) Yahoo Finance ^IRX (JSON) ---- */
+try {
+  const yRaw = await fetch(
+      viaProxy("https://query1.finance.yahoo.com/v7/finance/quote?symbols=^IRX")
+    ).then(r => r.json());
 
-    const yData  = JSON.parse(yRaw.contents);
-    const yRate  = yData.quoteResponse.result?.[0]?.regularMarketPrice;
+  const yData = JSON.parse(yRaw.contents);
+  const yRate = yData.quoteResponse.result?.[0]?.regularMarketPrice;
 
-    if (!isNaN(yRate)) {
-      document.getElementById("rf-input").value = yRate.toFixed(2);
-      return;                                   // Éxito → salimos
-    }
-  } catch (_) { /* pasamos al fallback */ }
+  if (!isNaN(yRate)) {
+    document.getElementById("rf-input").value = yRate.toFixed(2);
+    return;                                 // Éxito → salimos
+  }
+} catch (_) { /* pasamos al fallback */ }
+
 
   /* ---- 2) Stooq irx (CSV) --------------- */
   try {
